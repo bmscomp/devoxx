@@ -200,3 +200,4 @@ README.html
 .idea
 .exercism
 in-memory-db
+rocksdb-in-memory
