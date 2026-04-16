@@ -55,6 +55,9 @@ Key architectural difference: brokers are NOT part of the quorum. They're consum
 
 All metadata is a Kafka log — the same model Kafka uses for everything <!-- .element: class="subtitle" -->
 
+<div class="split-layout">
+<div class="split-left">
+
 ```json
 // RegisterBrokerRecord
 {
@@ -64,11 +67,17 @@ All metadata is a Kafka log — the same model Kafka uses for everything <!-- .e
     "brokerId": 0,
     "incarnationId": "kRaft-abc-123",
     "brokerEpoch": 42,
-    "endPoints": [{"name": "PLAINTEXT", "host": "broker0", "port": 9092}],
+    "endPoints": [{"name": "PLAINTEXT", 
+                   "host": "broker0", 
+                   "port": 9092
+                  }],
     "rack": "rack-1"
   }
 }
 ```
+
+</div>
+<div class="split-right fragment">
 
 ```json
 // PartitionRecord
@@ -84,7 +93,9 @@ All metadata is a Kafka log — the same model Kafka uses for everything <!-- .e
   }
 }
 ```
-<!-- .element: class="fragment" -->
+
+</div>
+</div>
 
 Note:
 Show actual record format. The audience can photograph this. Point out: this is JSON — it's readable.
