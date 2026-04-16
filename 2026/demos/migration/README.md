@@ -129,91 +129,21 @@ Before starting the migration, ensure:
 
 ### Phase 0 — Starting Point (ZooKeeper Mode)
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                     ZooKeeper Ensemble                       │
-│                                                              │
-│  ┌──────────┐    ┌──────────┐    ┌──────────┐                │ 
-│  │   ZK-1   │    │   ZK-2   │    │   ZK-3   │                │
-│  │  :2181   │    │  :2182   │    │  :2183   │                │
-│  └────┬─────┘    └────┬─────┘    └────┬─────┘                │
-│       │               │               │                      │
-│       └───────────────┼───────────────┘                      │
-│                       │                                      │
-│       ┌───────────────┼───────────────┐                      │
-│       │               │               │                      │
-│  ┌────┴─────┐    ┌────┴─────┐    ┌────┴─────┐                │
-│  │ Broker-1 │    │ Broker-2 │    │ Broker-3 │                │
-│  │ ID: 1    │    │ ID: 2    │    │ ID: 3    │                │
-│  │  :9092   │    │  :9093   │    │  :9094   │                │
-│  └──────────┘    └──────────┘    └──────────┘                │
-│                                                              │
-│  Metadata stored in ZooKeeper znodes:                        │
-│    /brokers, /topics, /controller, /config, ...              │
-└──────────────────────────────────────────────────────────────┘
-```
+![Phase 0 — ZooKeeper Mode](img/phase0-zk-mode.png)
+
+Metadata is stored entirely in ZooKeeper znodes (`/brokers`, `/topics`, `/controller`, `/config`, etc.). All three Kafka brokers connect to the ZooKeeper ensemble to read and write cluster state.
 
 ### Phase 1 — Bridge Mode (Dual-Write)
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│  ZooKeeper Ensemble              KRaft Controller Quorum     │
-│  ┌────┐  ┌────┐  ┌────┐         ┌─────────┐ ┌─────────┐      │
-│  │ZK-1│  │ZK-2│  │ZK-3│         │Ctrl-100 │ │Ctrl-101 │      │
-│  └──┬─┘  └──┬─┘  └──┬─┘         │ (voter) │ │ (voter) │      │
-│     └───┬────┘──────┘           └────┬────┘ └────┬────┘      │
-│         │                             │          │           │
-│         │                        ┌────┴────┐     │           │
-│         │                        │Ctrl-102 │─────┘           │
-│         │                        │ (voter) │                 │
-│    ┌────┘                        └────┬────┘                 │
-│    │                                  │                      │
-│    │    ◄──── dual-write ────►        │                      │
-│    │    metadata synced both ways     │                      │
-│    │                                  │                      │
-│  ┌─┴────────┐  ┌──────────┐  ┌───────┴──┐                    │
-│  │ Broker-1 │  │ Broker-2 │  │ Broker-3 │                    │
-│  │ ID: 1    │  │ ID: 2    │  │ ID: 3    │                    │
-│  │migration │  │migration │  │migration │                    │
-│  │  =true   │  │  =true   │  │  =true   │                    │
-│  └──────────┘  └──────────┘  └──────────┘                    │
-│                                                              │
-│  Metadata stored in BOTH:                                    │
-│    • ZooKeeper znodes                                        │
-│    • __cluster_metadata Raft log                             │
-└──────────────────────────────────────────────────────────────┘
-```
+![Phase 1 — Bridge Mode](img/phase1-bridge-mode.png)
+
+Three KRaft controllers are deployed alongside the existing ZooKeeper ensemble. Brokers are configured with `migration=true`, causing metadata to be dual-written to **both** ZooKeeper and the `__cluster_metadata` Raft log. This phase is **reversible** — you can roll back to pure ZooKeeper mode.
 
 ### Phase 2 — KRaft Only (Final State)
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│                   KRaft Controller Quorum                    │
-│                                                              │
-│  ┌─────────┐    ┌─────────┐    ┌─────────┐                   │
-│  │Ctrl-100 │    │Ctrl-101 │    │Ctrl-102 │                   │
-│  │ (voter) │    │ (voter) │    │ (voter) │                   │
-│  │  :9093  │    │  :9093  │    │  :9093  │                   │
-│  └────┬────┘    └────┬────┘    └────┬────┘                   │
-│       │              │              │                        │
-│       └──────────────┼──────────────┘                        │
-│                      │                                       │
-│                      │  Raft consensus                       │
-│                      │  __cluster_metadata                   │
-│                      │                                       │
-│  ┌──────────┐   ┌────┴─────┐   ┌──────────┐                  │
-│  │ Broker-1 │   │ Broker-2 │   │ Broker-3 │                  │
-│  │ ID: 1    │   │ ID: 2    │   │ ID: 3    │                  │
-│  │  :9092   │   │  :9093   │   │  :9094   │                  │
-│  └──────────┘   └──────────┘   └──────────┘                  │
-│                                                              │
-│  ██████████████████████████████████████████████████████████  │
-│  █  No ZooKeeper. No going back. Metadata in Raft only.  █   │
-│  ██████████████████████████████████████████████████████████  │
-└──────────────────────────────────────────────────────────────┘
-```
+![Phase 2 — KRaft Only](img/phase2-kraft-only.png)
+
+ZooKeeper has been completely removed. The KRaft controller quorum is the sole source of truth via Raft consensus. Brokers tail the `__cluster_metadata` log for all cluster state. **This is irreversible.**
 
 ---
 
