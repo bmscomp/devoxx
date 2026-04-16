@@ -51,16 +51,7 @@ The migration is a **phased, rolling process** designed to be performed with **z
 
 ### The Three Phases
 
-```
-  ┌─────────────┐       ┌─────────────┐       ┌──────────────┐
-  │   ZK Mode   │ ───►  │ Bridge Mode │ ───►  │  KRaft Only  │
-  │  (current)  │       │ (dual-write)│       │   (target)   │
-  └─────────────┘       └─────────────┘       └──────────────┘
-        │                      │                      │
-   Metadata in ZK        Metadata in ZK          Metadata in
-        only              AND KRaft log          KRaft log only
-                          simultaneously
-```
+![The Three Phases of ZK to KRaft Migration](img/three-phases-overview.png)
 
 ### What is "Bridge Mode"?
 
