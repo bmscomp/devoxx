@@ -196,23 +196,26 @@
 }
 
 .card {
-  background: #f8f9fa;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 18px;
+  background: #fcfcfc;
+  border: 1px solid #eaeaea;
+  border-radius: 6px;
+  padding: 22px 24px;
 }
 
 .card h4 {
-  margin: 0 0 8px 0;
-  font-size: 0.8em;
-  font-weight: 600;
-  color: #111;
+  margin: 0 0 10px 0;
+  font-size: 0.85em;
+  font-weight: 700;
+  color: #111 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .card p, .card ul {
-  font-size: 0.7em;
+  font-size: 0.8em;
   margin: 0;
-  color: #333;
+  color: #444;
+  line-height: 1.5;
 }
 
 .card ul { margin-left: 16px; }
