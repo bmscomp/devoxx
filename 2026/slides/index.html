@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kafka with KRaft in Production — Devoxx France 2026</title>
+  <meta name="description"
+    content="Deep Dive: Kafka with KRaft in Production — Goodbye ZooKeeper, Hello Simplicity. Devoxx France 2026.">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css" id="theme">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/github.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- Part 1: Kafka & the Coordination Problem -->
+      <section data-markdown="01-kafka-coordination.md" data-separator="^\n---\n" data-separator-vertical="^\n----\n"
+        data-separator-notes="^Note:">
+      </section>
+
+      <!-- Part 2: Paxos, Complexity & ZooKeeper -->
+      <section data-markdown="02-paxos-zookeeper.md" data-separator="^\n---\n" data-separator-vertical="^\n----\n"
+        data-separator-notes="^Note:">
+      </section>
+
+      <!-- Part 3: ZooKeeper in Kafka -->
+      <section data-markdown="03-zookeeper-kafka.md" data-separator="^\n---\n" data-separator-vertical="^\n----\n"
+        data-separator-notes="^Note:">
+      </section>
+
+      <!-- Part 4: Raft Deep Dive -->
+      <section data-markdown="04-raft.md" data-separator="^\n---\n" data-separator-vertical="^\n----\n"
+        data-separator-notes="^Note:">
+      </section>
+
+      <!-- Part 5: KRaft Internals -->
+      <section data-markdown="05-kraft.md" data-separator="^\n---\n" data-separator-vertical="^\n----\n"
+        data-separator-notes="^Note:">
+      </section>
+
+      <!-- Part 6: KRaft in Production — Simplicity -->
+      <section data-markdown="06-kraft-simplicity.md" data-separator="^\n---\n" data-separator-vertical="^\n----\n"
+        data-separator-notes="^Note:">
+      </section>
+
+      <!-- Part 7: Live Demo -->
+      <section data-markdown="07-demo.md" data-separator="^\n---\n" data-separator-vertical="^\n----\n"
+        data-separator-notes="^Note:">
+      </section>
+
+      <!-- Part 8: Pain Points & Challenges -->
+      <section data-markdown="08-challenges.md" data-separator="^\n---\n" data-separator-vertical="^\n----\n"
+        data-separator-notes="^Note:">
+      </section>
+
+      <!-- Part 9: Conclusion & Q&A -->
+      <section data-markdown="09-conclusion.md" data-separator="^\n---\n" data-separator-vertical="^\n----\n"
+        data-separator-notes="^Note:">
+      </section>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/markdown/markdown.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/zoom/zoom.js"></script>
+  <script>
+    Reveal.initialize({
+      hash: true,
+      slideNumber: 'c/t',
+      showSlideNumber: 'speaker',
+      transition: 'slide',
+      transitionSpeed: 'default',
+      backgroundTransition: 'fade',
+      center: true,
+      width: 1280,
+      height: 720,
+      margin: 0.08,
+      plugins: [RevealMarkdown, RevealHighlight, RevealNotes, RevealZoom]
+    });
+  </script>
+</body>
+
+</html>

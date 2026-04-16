@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZAB Animation</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0 6px;
+      align-items: center;
+    }
+
+    .controls button {
+      padding: 8px 22px;
+      border: 2px solid #eab308;
+      background: #fff;
+      color: #ca8a04;
+      font-weight: 700;
+      font-size: 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .controls button:hover {
+      background: #eab308;
+      color: #fff;
+      border-color: #eab308;
+    }
+
+    .controls button:disabled {
+      opacity: 0.3;
+      cursor: default;
+      border-color: #eab308;
+      background: #fff;
+      color: #ca8a04;
+    }
+
+    .step-label {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ca8a04;
+      min-width: 80px;
+      text-align: center;
+    }
+
+    .stage {
+      flex: 1;
+      width: 100%;
+      position: relative;
+      max-width: 900px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .description {
+      padding: 8px 16px 12px;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 500;
+      min-height: 55px;
+      color: #222;
+      max-width: 850px;
+      line-height: 1.35;
+    }
+
+    .description strong {
+      color: #ca8a04;
+    }
+
+    .description code {
+      background: #f0f0f0;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="controls">
+    <button id="prevBtn" disabled>◄ Prev</button>
+    <span class="step-label" id="stepLabel">Step 0/8</span>
+    <button id="nextBtn">Next ►</button>
+  </div>
+  <div class="stage">
+    <canvas id="canvas"></canvas>
+  </div>
+  <div class="description" id="desc">
+    Click <strong>Next</strong> to see how ZooKeeper uses ZAB (ZooKeeper Atomic Broadcast).
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const desc = document.getElementById('desc');
+    const stepLabel = document.getElementById('stepLabel');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    let step = 0;
+    const totalSteps = 8;
+
+    function resize() {
+      const stage = canvas.parentElement;
+      canvas.width = stage.clientWidth * 2;
+      canvas.height = stage.clientHeight * 2;
+      ctx.scale(2, 2);
+      draw();
+    }
+    window.addEventListener('resize', resize);
+
+    const W = () => canvas.width / 2;
+    const H = () => canvas.height / 2;
+
+    const nodes = () => {
+      const w = W(), h = H();
+      return [
+        { x: w / 2, y: 120, id: 'Node 1', type: 'looking', zxid: 0, state: {} },
+        { x: w / 2 - 180, y: 340, id: 'Node 2', type: 'looking', zxid: 0, state: {} },
+        { x: w / 2 + 180, y: 340, id: 'Node 3', type: 'looking', zxid: 0, state: {} }
+      ];
+    };
+
+    let state = nodes();
+
+    function drawNode(n, idx) {
+      const radius = 42;
+      ctx.save();
+
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, radius, 0, Math.PI * 2);
+
+      if (n.type === 'leader') {
+        ctx.fillStyle = '#fbb03b'; // ZooKeeper yellow
+        ctx.fill();
+        ctx.strokeStyle = '#ca8a04';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      } else if (n.type === 'looking') {
+        ctx.fillStyle = '#f0fdf4'; // Light green tint for voting
+        ctx.fill();
+        ctx.strokeStyle = '#22c55e';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else {
+        ctx.fillStyle = '#f5f5f5';
+        ctx.fill();
+        ctx.strokeStyle = '#ccc';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = (n.type === 'leader') ? '#fff' : '#333';
+
+      let parts = n.id.split(' ');
+      if (parts.length > 1) {
+        ctx.font = 'bold 12px Inter, system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(parts[0], n.x, n.y - 6);
+        ctx.font = 'bold 14px Inter, system-ui';
+        ctx.fillText(parts[1], n.x, n.y + 10);
+      } else {
+        ctx.font = 'bold 14px Inter, system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(n.id, n.x, n.y);
+      }
+
+      // Draw State
+      ctx.fillStyle = '#555';
+      ctx.font = 'bold 12px Inter, system-ui';
+      ctx.fillText(`zxid: ${n.zxid}`, n.x, n.y + 60);
+      let ds = Object.keys(n.state).length === 0 ? '-' : JSON.stringify(n.state).replace(/["{}]/g, '');
+      ctx.fillText(`data: [${ds}]`, n.x, n.y + 76);
+
+      if (n.type === 'looking') {
+        ctx.fillStyle = '#22c55e';
+        ctx.fillText('LOOKING', n.x, n.y - 50);
+      }
+
+      ctx.restore();
+    }
+
+    function drawArrow(from, to, label, color, dashed, progress, labelPos = 0.5) {
+      const radius = 48;
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const ux = dx / dist, uy = dy / dist;
+
+      const sx = from.x + ux * radius;
+      const sy = from.y + uy * radius;
+      const p = progress || 1;
+      const ex = from.x + ux * (radius + (dist - 2 * radius) * p);
+      const ey = from.y + uy * (radius + (dist - 2 * radius) * p);
+
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.5;
+      if (dashed) ctx.setLineDash([8, 5]);
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (p > 0) {
+        const headLen = 10;
+        const angle = Math.atan2(ey - sy, ex - sx);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(ex - headLen * Math.cos(angle - 0.4), ey - headLen * Math.sin(angle - 0.4));
+        ctx.lineTo(ex - headLen * Math.cos(angle + 0.4), ey - headLen * Math.sin(angle + 0.4));
+        ctx.fill();
+      }
+
+      if (label) {
+        const mx = sx + (ex - sx) * labelPos;
+        const my = sy + (ey - sy) * labelPos;
+        const perpX = -uy * 14;
+        const perpY = ux * 14;
+
+        ctx.font = 'bold 11px Inter, system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const m = ctx.measureText(label);
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillRect(mx + perpX - m.width / 2 - 4, my + perpY - 8, m.width + 8, 16);
+
+        ctx.fillStyle = color;
+        ctx.fillText(label, mx + perpX, my + perpY);
+      }
+      ctx.restore();
+    }
+
+    function drawClient(text, node) {
+      ctx.save();
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      const cx = node.x - 140, cy = node.y - 40;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(node.x - 48, node.y - 12);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#111';
+      ctx.font = 'bold 13px Inter, system-ui';
+      ctx.textAlign = 'right';
+      ctx.fillText('Client: ' + text, cx - 8, cy);
+      ctx.restore();
+    }
+
+    function drawBadge(text, color) {
+      const w = W(), h = H();
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.font = 'bold 16px Inter, system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText(text, w / 2, 24);
+      ctx.restore();
+    }
+
+    function draw() {
+      const w = W(), h = H();
+      ctx.clearRect(0, 0, w, h);
+
+      state = nodes();
+
+      if (step === 1) {
+        // Election Vote
+        drawArrow(state[1], state[0], 'Vote(id=1)', '#22c55e', true, 1, 0.4);
+        drawArrow(state[2], state[0], 'Vote(id=1)', '#22c55e', true, 1, 0.4);
+        drawBadge('Fast Leader Election: Nodes exchange votes and elect Node 1.', '#22c55e');
+      }
+
+      if (step >= 2) {
+        state[0].id = 'Leader';
+        state[0].type = 'leader';
+        state[1].id = 'Follower 1';
+        state[1].type = 'follower';
+        state[2].id = 'Follower 2';
+        state[2].type = 'follower';
+      }
+
+      if (step === 2) {
+        drawBadge('✓ Stable Leader Elected! ZAB Phase 2 (Broadcast) begins.', '#ca8a04');
+      }
+
+      if (step === 3) {
+        drawClient('set(/foo, "V")', state[0]);
+      }
+      if (step === 4) {
+        state[0].zxid = 1;
+        // Distribute labels so they don't overlap horizontally
+        drawArrow(state[0], state[1], 'PROPOSE(zxid=1, "V")', '#ca8a04', false, 1, 0.65); // Lower
+        drawArrow(state[0], state[2], 'PROPOSE(zxid=1, "V")', '#ca8a04', false, 1, 0.45); // Higher
+      }
+      if (step === 5) {
+        state[0].zxid = 1;
+        drawArrow(state[1], state[0], 'ACK(1) ✓', '#ca8a04', true, 1, 0.65);
+        drawArrow(state[2], state[0], 'ACK(1) ✓', '#ca8a04', true, 1, 0.45);
+      }
+      if (step === 6) {
+        state[0].zxid = 1;
+        drawBadge('Leader gets Quorum of ACKs. Ready to commit!', '#16a34a');
+      }
+      if (step === 7) {
+        state[0].zxid = 1;
+        drawArrow(state[0], state[1], 'COMMIT(1)', '#16a34a', false, 1, 0.65);
+        drawArrow(state[0], state[2], 'COMMIT(1)', '#16a34a', false, 1, 0.45);
+      }
+      if (step === 8) {
+        state[0].zxid = 1; state[1].zxid = 1; state[2].zxid = 1;
+        state[0].state = { "foo": "V" };
+        state[1].state = { "foo": "V" };
+        state[2].state = { "foo": "V" };
+        drawBadge('✓ State Applied Safely! Client gets Success.', '#16a34a');
+        drawClient('Success ✓', state[0]);
+      }
+
+      state.forEach((n, i) => drawNode(n, i));
+    }
+
+    const descriptions = [
+      'Click <strong>Next</strong> to see how ZooKeeper Atomic Broadcast avoids the Dueling Proposers problem. It starts with an election.',
+      '<strong>1. Fast Leader Election</strong> — ZAB strictly requires a single stable Leader. The nodes begin in the <code>LOOKING</code> state, exchange votes based on node IDs and ZXID logs, and elect a winner.',
+      '<strong>2. Leader Established</strong> — Node 1 becomes the <strong>Leader</strong>. A quorum is established and the cluster is ready to accept writes.',
+      '<strong>3. Client Request</strong> — A client wants to mutate state. It sends a write request <code>set(/foo, "V")</code> directly to the Leader.',
+      '<strong>4. Sequencing</strong> — The Leader converts the request into a transaction, assigns it the next strictly increasing <code>zxid</code> (1), and sends a <strong>PROPOSE</strong> to all Followers.',
+      '<strong>5. Acknowledgment</strong> — The Followers blindly append the proposal to their log (to ensure order) and immediately respond with an <strong>ACK</strong>.',
+      '<strong>6. Quorum</strong> — Because there is only <strong>ONE Leader</strong>, it never gets outbid. Once it receives a majority of ACKs, it guarantees the transaction is safely persisted.',
+      '<strong>7. Commit Broadcast</strong> — The Leader broadcasts a <strong>COMMIT</strong> message, instructing the Followers to apply the transaction to their in-memory data trees.',
+      '<strong>8. Execution</strong> — Followers apply the state exactly in ZXID order. ZAB operates like a strict FIFO pipeline, guaranteeing consistency cleanly. <strong>(This is exactly what Raft copied)</strong>'
+    ];
+
+    function updateUI() {
+      stepLabel.textContent = `Step ${step}/${totalSteps}`;
+      prevBtn.disabled = step === 0;
+      nextBtn.disabled = step === totalSteps;
+      desc.innerHTML = descriptions[step];
+      draw();
+    }
+
+    nextBtn.addEventListener('click', () => {
+      if (step < totalSteps) { step++; updateUI(); }
+    });
+    prevBtn.addEventListener('click', () => {
+      if (step > 0) { step--; updateUI(); }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') { nextBtn.click(); e.preventDefault(); }
+      if (e.key === 'ArrowLeft') { prevBtn.click(); e.preventDefault(); }
+    });
+
+    resize();
+    updateUI();
+  </script>
+</body>
+
+</html>

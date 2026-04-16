@@ -1,0 +1,306 @@
+:root {
+  --r-background-color: #ffffff;
+  --r-main-font: 'Inter', sans-serif;
+  --r-heading-font: 'Inter', sans-serif;
+  --r-code-font: 'JetBrains Mono', monospace;
+  --r-main-font-size: 32px;
+  --r-heading1-size: 2.2em;
+  --r-heading2-size: 1.6em;
+  --r-heading3-size: 1.2em;
+  --r-main-color: #1a1a1a;
+  --r-heading-color: #111111;
+  --r-link-color: #1a73e8;
+  --accent-blue: #1a73e8;
+  --accent-red: #cc0000;
+  --accent-black: #111111;
+}
+
+.reveal {
+  font-weight: 300;
+}
+
+.reveal h1, .reveal h2, .reveal h3 {
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: -0.02em;
+  color: var(--r-heading-color);
+}
+
+.reveal h1 {
+  font-weight: 900;
+}
+
+.reveal code {
+  font-family: var(--r-code-font);
+  color: #1a1a1a;
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.reveal pre {
+  font-size: 0.55em;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  border: 1px solid #e0e0e0;
+}
+
+.reveal pre code {
+  padding: 20px;
+  line-height: 1.5;
+  max-height: 500px;
+  background: #f8f9fa;
+  color: #1a1a1a;
+}
+
+.reveal .slides section {
+  text-align: left;
+  padding: 20px 40px;
+}
+
+.reveal .slides section.center-slide {
+  text-align: center;
+}
+
+.reveal ul {
+  margin-left: 0;
+}
+
+.reveal li {
+  margin-bottom: 0.5em;
+  font-size: 0.85em;
+  line-height: 1.4;
+  color: #1a1a1a;
+}
+
+.reveal li li {
+  font-size: 0.9em;
+  color: #444;
+}
+
+/* ── Accent Colors: Blue, Black, Red only ── */
+
+.accent-blue   { color: var(--accent-blue); }
+.accent-red    { color: var(--accent-red); }
+.accent-black  { color: var(--accent-black); font-weight: 700; }
+
+/* Legacy classes → mapped to 3-color palette */
+.accent-orange { color: var(--accent-blue); }
+.accent-green  { color: var(--accent-blue); }
+.accent-purple { color: var(--accent-black); font-weight: 700; }
+.accent-cyan   { color: var(--accent-blue); }
+.accent-yellow { color: var(--accent-black); font-weight: 700; }
+
+/* ── Tags ── */
+
+.tag {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.6em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 8px;
+}
+
+.tag-part      { background: rgba(26, 115, 232, 0.1); color: var(--accent-blue); }
+.tag-demo      { background: rgba(26, 115, 232, 0.1); color: var(--accent-blue); }
+.tag-challenge { background: rgba(204, 0, 0, 0.08);   color: var(--accent-red); }
+
+/* ── Subtitle ── */
+
+.subtitle {
+  font-size: 0.6em;
+  color: #444;
+  font-weight: 300;
+  margin-top: -10px;
+}
+
+/* ── Quote Block ── */
+
+.quote-block {
+  border-left: 4px solid var(--accent-blue);
+  padding: 10px 20px;
+  margin: 20px 0;
+  font-style: italic;
+  color: #222;
+  background: rgba(26, 115, 232, 0.03);
+  border-radius: 0 8px 8px 0;
+}
+
+.quote-block .author {
+  display: block;
+  font-style: normal;
+  color: #555;
+  margin-top: 8px;
+  font-size: 0.85em;
+}
+
+/* ── Tables ── */
+
+.reveal table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.65em;
+  margin: 15px 0;
+}
+
+.reveal table th {
+  background: rgba(26, 115, 232, 0.08);
+  color: var(--accent-blue);
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid rgba(26, 115, 232, 0.2);
+}
+
+.reveal table td {
+  padding: 8px 14px;
+  border-bottom: 1px solid #e8e8e8;
+  color: #222;
+}
+
+.reveal table tr:hover td {
+  background: rgba(0,0,0,0.02);
+}
+
+/* ── Diagram Box ── */
+
+.diagram-box {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 15px 0;
+  font-family: var(--r-code-font);
+  font-size: 0.55em;
+  line-height: 1.6;
+  white-space: pre;
+  overflow-x: auto;
+  color: #1a1a1a;
+}
+
+/* ── Card Grid ── */
+
+.card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.card-grid.three-col {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.card {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.card h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.8em;
+  font-weight: 600;
+  color: #111;
+}
+
+.card p, .card ul {
+  font-size: 0.7em;
+  margin: 0;
+  color: #333;
+}
+
+.card ul { margin-left: 16px; }
+.card li { margin-bottom: 4px; }
+
+/* ── Progress Line ── */
+
+.progress-line {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 15px 20px;
+  margin: 8px 0;
+  font-size: 0.7em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #222;
+}
+
+.progress-line .year {
+  font-weight: 700;
+  color: var(--accent-blue);
+  min-width: 60px;
+}
+
+/* ── Highlight Box ── */
+
+.highlight-box {
+  background: rgba(26, 115, 232, 0.04);
+  border: 1px solid rgba(26, 115, 232, 0.15);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 15px 0;
+}
+
+/* ── Split Layout ── */
+
+.split-layout {
+  display: flex;
+  gap: 30px;
+  align-items: flex-start;
+  margin-top: 15px;
+}
+
+.split-layout .split-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.split-layout .split-right {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Utilities ── */
+
+.strikethrough {
+  text-decoration: line-through;
+  color: var(--accent-red);
+}
+
+.section-title {
+  font-size: 1.8em;
+  font-weight: 900;
+  margin-bottom: 0.3em;
+}
+
+.section-subtitle {
+  font-size: 0.7em;
+  color: #444;
+  font-weight: 300;
+}
+
+.big-number {
+  font-size: 3em;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.emoji-bullet {
+  list-style: none;
+  padding-left: 0;
+}
+
+/* ── Slide Number ── */
+
+.reveal .slide-number {
+  font-family: var(--r-code-font);
+  font-size: 14px;
+  color: #777;
+}

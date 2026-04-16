@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paxos Dueling Proposers Animation</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #fff;
+    color: #1a1a1a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+  }
+  .controls {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0 6px;
+    align-items: center;
+  }
+  .controls button {
+    padding: 8px 22px;
+    border: 2px solid #1a73e8;
+    background: #fff;
+    color: #1a73e8;
+    font-weight: 700;
+    font-size: 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .controls button:hover { background: #1a73e8; color: #fff; }
+  .controls button:disabled { opacity: 0.3; cursor: default; }
+  .step-label {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a73e8;
+    min-width: 80px;
+    text-align: center;
+  }
+  .stage {
+    flex: 1;
+    width: 100%;
+    position: relative;
+    max-width: 900px;
+  }
+  canvas { width: 100%; height: 100%; }
+  .description {
+    padding: 8px 16px 12px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 500;
+    min-height: 48px;
+    color: #222;
+    max-width: 850px;
+    line-height: 1.35;
+  }
+  .description strong { color: #1a73e8; }
+  .description .red { color: #cc0000; font-weight: 700; }
+  .description code { background: #f0f0f0; padding: 2px 5px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.9em; }
+</style>
+</head>
+<body>
+<div class="controls">
+  <button id="prevBtn" disabled>◄ Prev</button>
+  <span class="step-label" id="stepLabel">Step 0/10</span>
+  <button id="nextBtn">Next ►</button>
+</div>
+<div class="stage">
+  <canvas id="canvas"></canvas>
+</div>
+<div class="description" id="desc">
+  Click <strong>Next</strong> to start the Paxos animation
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const desc = document.getElementById('desc');
+const stepLabel = document.getElementById('stepLabel');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+
+let step = 0;
+const totalSteps = 10;
+
+function resize() {
+  const stage = canvas.parentElement;
+  canvas.width = stage.clientWidth * 2;
+  canvas.height = stage.clientHeight * 2;
+  ctx.scale(2, 2);
+  draw();
+}
+window.addEventListener('resize', resize);
+
+const W = () => canvas.width / 2;
+const H = () => canvas.height / 2;
+
+const nodes = () => {
+  const w = W(), h = H();
+  return [
+    { x: w/2 - 250, y: 100, id: 'Proposer A', type: 'propA' },
+    { x: w/2 + 250, y: 100, id: 'Proposer B', type: 'propB' },
+    { x: w/2 - 180, y: h - 140, id: 'Acceptor 1', type: 'acc', minN: null, accVal: null },
+    { x: w/2,       y: h - 140, id: 'Acceptor 2', type: 'acc', minN: null, accVal: null },
+    { x: w/2 + 180, y: h - 140, id: 'Acceptor 3', type: 'acc', minN: null, accVal: null },
+  ];
+};
+
+let state = nodes();
+
+function drawNode(n, idx) {
+  const radius = 42;
+  ctx.save();
+  
+  ctx.beginPath();
+  ctx.arc(n.x, n.y, radius, 0, Math.PI * 2);
+  
+  if (n.type === 'propA') {
+    ctx.fillStyle = '#1a73e8';
+    ctx.fill();
+    ctx.strokeStyle = '#0d5bbd';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  } else if (n.type === 'propB') {
+    ctx.fillStyle = '#cc0000';
+    ctx.fill();
+    ctx.strokeStyle = '#990000';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = '#f5f5f5';
+    ctx.fill();
+    ctx.strokeStyle = '#ccc';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = (n.type === 'acc') ? '#222' : '#fff';
+  ctx.font = 'bold 12px Inter, system-ui';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  let t1 = n.id.split(' ')[0];
+  let t2 = n.id.split(' ')[1];
+  ctx.fillText(t1, n.x, n.y - 6);
+  ctx.font = 'bold 14px Inter, system-ui';
+  ctx.fillText(t2, n.x, n.y + 10);
+
+  if (n.type === 'acc') {
+    ctx.fillStyle = '#444';
+    ctx.font = 'bold 12px Inter, system-ui';
+    ctx.fillText(`min_n: ${n.minN || '-'}`, n.x, n.y + 60);
+    ctx.fillText(`accepted: ${n.accVal || '-'}`, n.x, n.y + 78);
+  }
+  
+  ctx.restore();
+}
+
+function drawArrow(from, to, label, color, dashed, progress) {
+  const radius = 48; // Node padding
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const ux = dx / dist, uy = dy / dist;
+  
+  const sx = from.x + ux * radius;
+  const sy = from.y + uy * radius;
+  const p = progress || 1;
+  const ex = from.x + ux * (radius + (dist - 2 * radius) * p);
+  const ey = from.y + uy * (radius + (dist - 2 * radius) * p);
+
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.5;
+  if (dashed) ctx.setLineDash([8, 5]);
+  ctx.beginPath();
+  ctx.moveTo(sx, sy);
+  ctx.lineTo(ex, ey);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  if (p > 0) {
+    const headLen = 10;
+    const angle = Math.atan2(ey - sy, ex - sx);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(ex, ey);
+    ctx.lineTo(ex - headLen * Math.cos(angle - 0.4), ey - headLen * Math.sin(angle - 0.4));
+    ctx.lineTo(ex - headLen * Math.cos(angle + 0.4), ey - headLen * Math.sin(angle + 0.4));
+    ctx.fill();
+  }
+
+  if (label) {
+    const mx = (sx + ex) / 2;
+    const my = (sy + ey) / 2;
+    const perpX = -uy * 16;
+    const perpY = ux * 16;
+    
+    ctx.font = 'bold 11px Inter, system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    const m = ctx.measureText(label);
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.fillRect(mx + perpX - m.width/2 - 4, my + perpY - 8, m.width + 8, 16);
+    
+    ctx.fillStyle = color;
+    ctx.fillText(label, mx + perpX, my + perpY);
+  }
+  ctx.restore();
+}
+
+function drawBadge(text, color) {
+  const w = W(), h = H();
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.font = 'bold 16px Inter, system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, w / 2, h - 20);
+  ctx.restore();
+}
+
+function drawLabel(x, y, text, color, align = 'center') {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.font = 'bold 13px Inter, system-ui';
+  ctx.textAlign = align;
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+function draw() {
+  const w = W(), h = H();
+  ctx.clearRect(0, 0, w, h);
+
+  state = nodes();
+
+  if (step === 1) {
+    drawArrow(state[0], state[2], 'Prepare(1)', '#1a73e8', false);
+    drawArrow(state[0], state[3], 'Prepare(1)', '#1a73e8', false);
+  }
+  if (step === 2) {
+    state[2].minN = 1; state[3].minN = 1;
+    drawArrow(state[2], state[0], 'Promise(1)', '#1a73e8', true);
+    drawArrow(state[3], state[0], 'Promise(1)', '#1a73e8', true);
+  }
+  if (step === 3) {
+    state[2].minN = 1; state[3].minN = 1;
+    drawArrow(state[1], state[3], 'Prepare(2)', '#cc0000', false);
+    drawArrow(state[1], state[4], 'Prepare(2)', '#cc0000', false);
+  }
+  if (step === 4) {
+    state[2].minN = 1; state[3].minN = 2; state[4].minN = 2; 
+    drawArrow(state[3], state[1], 'Promise(2)', '#cc0000', true);
+    drawArrow(state[4], state[1], 'Promise(2)', '#cc0000', true);
+  }
+  if (step === 5) {
+    state[2].minN = 1; state[3].minN = 2; state[4].minN = 2; 
+    drawArrow(state[0], state[2], 'Accept(1, "A")', '#1a73e8', false);
+    drawArrow(state[0], state[3], 'Accept(1, "A")', '#1a73e8', false);
+  }
+  if (step === 6) {
+    state[2].minN = 1; state[2].accVal = '"A"';
+    state[3].minN = 2; state[4].minN = 2; 
+    drawArrow(state[2], state[0], 'Accepted', '#1a73e8', true);
+    drawArrow(state[3], state[0], 'REJECTED', '#cc0000', true);
+    drawLabel(state[3].x - 60, state[3].y - 30, 'min_n > 1!', '#cc0000', 'right');
+  }
+  if (step === 7) {
+    state[2].minN = 1; state[2].accVal = '"A"';
+    state[3].minN = 2; state[4].minN = 2; 
+    drawArrow(state[1], state[3], 'Accept(2, "B")', '#cc0000', false);
+    drawArrow(state[1], state[4], 'Accept(2, "B")', '#cc0000', false);
+  }
+  if (step === 8) {
+    state[2].minN = 3; state[2].accVal = '"A"';
+    state[3].minN = 3; state[4].minN = 2; 
+    drawArrow(state[0], state[2], 'Prepare(3)', '#1a73e8', false);
+    drawArrow(state[0], state[3], 'Prepare(3)', '#1a73e8', false);
+    drawBadge('Proposer A wakes up and outbids!', '#1a73e8');
+  }
+  if (step === 9) {
+    state[2].minN = 3; state[2].accVal = '"A"';
+    state[3].minN = 3; state[4].minN = 2; state[4].accVal = '"B"';
+    drawArrow(state[4], state[1], 'Accepted', '#cc0000', true);
+    drawArrow(state[3], state[1], 'REJECTED', '#cc0000', true);
+    drawLabel(state[3].x + 60, state[3].y - 30, 'min_n > 2!', '#cc0000', 'left');
+  }
+  if (step === 10) {
+    state[2].minN = 3; state[2].accVal = '"A"';
+    state[3].minN = 3; state[4].minN = 2; state[4].accVal = '"B"';
+    drawBadge('☠️ LIVELOCK: Neither value reaches a majority!', '#cc0000');
+    drawArrow(state[0], state[4], 'Prepare(5)...', '#1a73e8', true, 0.4);
+    drawArrow(state[1], state[2], 'Prepare(6)...', '#cc0000', true, 0.4);
+  }
+
+  state.forEach((n, i) => drawNode(n, i));
+}
+
+const descriptions = [
+  'Click <strong>Next</strong> to see the <strong>Paxos Dueling Proposers</strong> livelock scenario. Proposers A and B both want to choose a value.',
+  '<strong>1. Prepare Phase</strong> — Proposer A wakes up first. It sends <code>Prepare(1)</code> to Acceptors 1 and 2.',
+  '<strong>2. Promise Phase</strong> — Acceptors 1 & 2 reply with <code>Promise(1)</code>. They update their internal state to <code>min_n = 1</code>.',
+  '<strong>3. Interruption</strong> — Proposer B wakes up. It sends <code>Prepare(2)</code> to Acceptors 2 and 3.',
+  '<strong>4. Outbidding</strong> — Acceptors 2 & 3 reply with <code>Promise(2)</code>. Acceptor 2 strictly overwrites its previous promise, raising to <code>min_n = 2</code>.',
+  '<strong>5. Accept Phase (A)</strong> — Proposer A thinks it has a majority (from step 2). It attempts to commit by sending <code>Accept(1, "A")</code>.',
+  '<strong>6. Rejected!</strong> — Acceptor 1 accepts "A". But Acceptor 2 <strong class="red">rejects</strong> it! Acceptor 2 promised it would ignore anything &lt; 2.',
+  '<strong>7. Accept Phase (B)</strong> — Proposer B thinks it has a majority (from step 4). It sends <code>Accept(2, "B")</code>.',
+  '<strong>8. A Strikes Back</strong> — Proposer A realizes it failed, increments its number, and sends <code>Prepare(3)</code>! Acceptor 2 updates to <code>min_n = 3</code>.',
+  '<strong>9. Rejected Again!</strong> — Acceptor 3 accepts "B". But Acceptor 2 <strong class="red">rejects</strong> B\'s accept! It just promised to ignore anything &lt; 3.',
+  '<strong>10. <span class="red">Livelock Failure</span></strong> — They will keep outbidding each other infinitely. No value ever reaches a majority. This is fundamentally why <strong>ZooKeeper (ZAB)</strong> uses a stable leader!'
+];
+
+function updateUI() {
+  stepLabel.textContent = `Step ${step}/${totalSteps}`;
+  prevBtn.disabled = step === 0;
+  nextBtn.disabled = step === totalSteps;
+  desc.innerHTML = descriptions[step];
+  draw();
+}
+
+nextBtn.addEventListener('click', () => {
+  if (step < totalSteps) { step++; updateUI(); }
+});
+prevBtn.addEventListener('click', () => {
+  if (step > 0) { step--; updateUI(); }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { nextBtn.click(); e.preventDefault(); }
+  if (e.key === 'ArrowLeft') { prevBtn.click(); e.preventDefault(); }
+});
+
+resize();
+updateUI();
+</script>
+</body>
+</html>

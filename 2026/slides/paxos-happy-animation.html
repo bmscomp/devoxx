@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paxos Happy Path Animation</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0 6px;
+      align-items: center;
+    }
+
+    .controls button {
+      padding: 8px 22px;
+      border: 2px solid #1a73e8;
+      background: #fff;
+      color: #1a73e8;
+      font-weight: 700;
+      font-size: 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .controls button:hover {
+      background: #1a73e8;
+      color: #fff;
+    }
+
+    .controls button:disabled {
+      opacity: 0.3;
+      cursor: default;
+    }
+
+    .step-label {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1a73e8;
+      min-width: 80px;
+      text-align: center;
+    }
+
+    .stage {
+      flex: 1;
+      width: 100%;
+      position: relative;
+      max-width: 900px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .description {
+      padding: 8px 16px 12px;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 500;
+      min-height: 55px;
+      color: #222;
+      max-width: 850px;
+      line-height: 1.35;
+    }
+
+    .description strong {
+      color: #1a73e8;
+    }
+
+    .description .red {
+      color: #cc0000;
+      font-weight: 700;
+    }
+
+    .description code {
+      background: #f0f0f0;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="controls">
+    <button id="prevBtn" disabled>◄ Prev</button>
+    <span class="step-label" id="stepLabel">Step 0/5</span>
+    <button id="nextBtn">Next ►</button>
+  </div>
+  <div class="stage">
+    <canvas id="canvas"></canvas>
+  </div>
+  <div class="description" id="desc">
+    Click <strong>Next</strong> to watch the "Happy Path" of standard Paxos.
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const desc = document.getElementById('desc');
+    const stepLabel = document.getElementById('stepLabel');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    let step = 0;
+    const totalSteps = 5;
+
+    function resize() {
+      const stage = canvas.parentElement;
+      canvas.width = stage.clientWidth * 2;
+      canvas.height = stage.clientHeight * 2;
+      ctx.scale(2, 2);
+      draw();
+    }
+    window.addEventListener('resize', resize);
+
+    const W = () => canvas.width / 2;
+    const H = () => canvas.height / 2;
+
+    const nodes = () => {
+      const w = W(), h = H();
+      return [
+        { x: w / 2, y: 80, id: 'Proposer', type: 'prop' },
+        { x: w / 2 - 200, y: 220, id: 'Acceptor 1', type: 'acc', minN: null, accVal: null },
+        { x: w / 2, y: 220, id: 'Acceptor 2', type: 'acc', minN: null, accVal: null },
+        { x: w / 2 + 200, y: 220, id: 'Acceptor 3', type: 'acc', minN: null, accVal: null },
+        { x: w / 2 - 120, y: 360, id: 'Learner 1', type: 'learn', learned: null },
+        { x: w / 2 + 120, y: 360, id: 'Learner 2', type: 'learn', learned: null },
+      ];
+    };
+
+    let state = nodes();
+
+    function drawNode(n, idx) {
+      const radius = 42;
+      ctx.save();
+
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, radius, 0, Math.PI * 2);
+
+      if (n.type === 'prop') {
+        ctx.fillStyle = '#1a73e8';
+        ctx.fill();
+        ctx.strokeStyle = '#0d5bbd';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      } else if (n.type === 'learn') {
+        ctx.fillStyle = '#333';
+        ctx.fill();
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = '#f5f5f5';
+        ctx.fill();
+        ctx.strokeStyle = '#ccc';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = (n.type === 'acc') ? '#222' : '#fff';
+      if (n.type === 'prop') {
+        ctx.font = 'bold 14px Inter, system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(n.id, n.x, n.y);
+      } else {
+        ctx.font = 'bold 12px Inter, system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        let t1 = n.id.split(' ')[0];
+        let t2 = n.id.split(' ')[1];
+        ctx.fillText(t1, n.x, n.y - 6);
+        ctx.font = 'bold 14px Inter, system-ui';
+        ctx.fillText(t2, n.x, n.y + 10);
+      }
+
+      if (n.type === 'acc') {
+        ctx.fillStyle = '#444';
+        ctx.font = 'bold 12px Inter, system-ui';
+        ctx.fillText(`min_n: ${n.minN || '-'}`, n.x, n.y + 60);
+        ctx.fillText(`accepted: ${n.accVal || '-'}`, n.x, n.y + 76);
+      }
+
+      if (n.type === 'learn') {
+        ctx.fillStyle = '#444';
+        ctx.font = 'bold 12px Inter, system-ui';
+        ctx.fillText(`value: ${n.learned || '-'}`, n.x, n.y + 60);
+      }
+
+      ctx.restore();
+    }
+
+    function drawArrow(from, to, label, color, dashed, progress, labelPos = 0.5) {
+      const radius = 48;
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const ux = dx / dist, uy = dy / dist;
+
+      const sx = from.x + ux * radius;
+      const sy = from.y + uy * radius;
+      const p = progress || 1;
+      const ex = from.x + ux * (radius + (dist - 2 * radius) * p);
+      const ey = from.y + uy * (radius + (dist - 2 * radius) * p);
+
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.5;
+      if (dashed) ctx.setLineDash([8, 5]);
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (p > 0) {
+        const headLen = 10;
+        const angle = Math.atan2(ey - sy, ex - sx);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(ex - headLen * Math.cos(angle - 0.4), ey - headLen * Math.sin(angle - 0.4));
+        ctx.lineTo(ex - headLen * Math.cos(angle + 0.4), ey - headLen * Math.sin(angle + 0.4));
+        ctx.fill();
+      }
+
+      if (label) {
+        const mx = sx + (ex - sx) * labelPos;
+        const my = sy + (ey - sy) * labelPos;
+        const perpX = -uy * 14;
+        const perpY = ux * 14;
+
+        ctx.font = 'bold 11px Inter, system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const m = ctx.measureText(label);
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillRect(mx + perpX - m.width / 2 - 4, my + perpY - 8, m.width + 8, 16);
+
+        ctx.fillStyle = color;
+        ctx.fillText(label, mx + perpX, my + perpY);
+      }
+      ctx.restore();
+    }
+
+    function drawBadge(text, color) {
+      const w = W(), h = H();
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.font = 'bold 16px Inter, system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText(text, w / 2, 20); // Top of the screen
+      ctx.restore();
+    }
+
+    function draw() {
+      const w = W(), h = H();
+      ctx.clearRect(0, 0, w, h);
+
+      state = nodes();
+
+      if (step === 1) {
+        drawArrow(state[0], state[1], 'Prepare(1)', '#1a73e8', false);
+        drawArrow(state[0], state[2], 'Prepare(1)', '#1a73e8', false);
+        drawArrow(state[0], state[3], 'Prepare(1)', '#1a73e8', false);
+      }
+      if (step === 2) {
+        state[1].minN = 1; state[2].minN = 1; state[3].minN = 1;
+        drawArrow(state[1], state[0], 'Promise(1)', '#1a73e8', true);
+        drawArrow(state[2], state[0], 'Promise(1)', '#1a73e8', true);
+        drawArrow(state[3], state[0], 'Promise(1)', '#1a73e8', true);
+      }
+      if (step === 3) {
+        state[1].minN = 1; state[2].minN = 1; state[3].minN = 1;
+        drawArrow(state[0], state[1], 'Accept(1, "V")', '#1a73e8', false);
+        drawArrow(state[0], state[2], 'Accept(1, "V")', '#1a73e8', false);
+        drawArrow(state[0], state[3], 'Accept(1, "V")', '#1a73e8', false);
+      }
+      if (step === 4) {
+        state[1].minN = 1; state[2].minN = 1; state[3].minN = 1;
+        state[1].accVal = '"V"'; state[2].accVal = '"V"'; state[3].accVal = '"V"';
+
+        // Acceptors broadcast Accepted to Learners (visual complexity!)
+        // Use labelPos = 0.75 to place the text near the Learners, avoiding the clutter in the center
+        drawArrow(state[1], state[4], 'Accepted', '#666', true, 1, 0.75);
+        drawArrow(state[1], state[5], '', '#666', true);
+        drawArrow(state[2], state[4], '', '#666', true);
+        drawArrow(state[2], state[5], '', '#666', true);
+        drawArrow(state[3], state[4], '', '#666', true);
+        drawArrow(state[3], state[5], 'Accepted', '#666', true, 1, 0.75);
+      }
+      if (step === 5) {
+        state[1].minN = 1; state[2].minN = 1; state[3].minN = 1;
+        state[1].accVal = '"V"'; state[2].accVal = '"V"'; state[3].accVal = '"V"';
+        state[4].learned = '"V"'; state[5].learned = '"V"';
+        drawBadge('✓ Consensus Reached! (After 2 phases and O(M*N) messages)', '#1a73e8');
+      }
+
+      state.forEach((n, i) => drawNode(n, i));
+    }
+
+    const descriptions = [
+      'Click <strong>Next</strong> to watch the happy path of standard Paxos. We have 3 distinct roles: Proposers, Acceptors, and Learners.',
+      '<strong>1. Phase 1a (Prepare)</strong> — The Proposer picks a sequence number (1) and sends a <code>Prepare(1)</code> request to all Acceptors.',
+      '<strong>2. Phase 1b (Promise)</strong> — Acceptors respond with a <code>Promise</code> to ignore any future requests with a number less than 1. They update <code>min_n=1</code>.',
+      '<strong>3. Phase 2a (Accept Request)</strong> — Having received Promises from a majority, the Proposer sends an <code>Accept(1, "V")</code> message.',
+      '<strong>4. Phase 2b (Accepted)</strong> — The Acceptors accept the value (since 1 >= <code>min_n</code>) and broadcast an <code>Accepted</code> message directly to the <strong>Learners</strong>.',
+      '<strong>5. Chosen!</strong> — The Learners aggregate the <code>Accepted</code> messages. The value is chosen once a majority is reached. <strong>That was just for one value!</strong> Note the complexity: <strong>M</strong> Acceptors broadcasting to <strong>N</strong> Learners.'
+    ];
+
+    function updateUI() {
+      stepLabel.textContent = `Step ${step}/${totalSteps}`;
+      prevBtn.disabled = step === 0;
+      nextBtn.disabled = step === totalSteps;
+      desc.innerHTML = descriptions[step];
+      draw();
+    }
+
+    nextBtn.addEventListener('click', () => {
+      if (step < totalSteps) { step++; updateUI(); }
+    });
+    prevBtn.addEventListener('click', () => {
+      if (step > 0) { step--; updateUI(); }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') { nextBtn.click(); e.preventDefault(); }
+      if (e.key === 'ArrowLeft') { prevBtn.click(); e.preventDefault(); }
+    });
+
+    resize();
+    updateUI();
+  </script>
+</body>
+
+</html>
