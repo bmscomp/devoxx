@@ -41,7 +41,7 @@ Surviving Availability Zone (AZ) Failures <!-- .element: class="subtitle" -->
 - **AZ-A**: 1 Controller
 - **AZ-B**: 1 Controller
 - **AZ-C**: 1 Controller
-<p style="font-size: 0.9em; font-weight: bold; color: var(--accent-green); margin-top: -10px;">✓ Tolerates loss of any 1 entire AZ</p>
+<p style="font-size: 0.9em; font-weight: bold; color: var(--accent-green); margin-top: 10px;">✓ Tolerates loss of any 1 entire AZ</p>
 
 ### Dual Datacenter
 - <strong>High Risk</strong>
