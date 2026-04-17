@@ -149,8 +149,9 @@ phase1:
 	@$(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase1/controller3.properties > $(LOGS_DIR)/controller3.log 2>&1 & echo $$! > $(PIDS_DIR)/controller3.pid
 	@sleep 5
 	
-	@echo "$(YELLOW)▸ Stopping ZK-only Brokers...$(NC)"
-	@kill -9 $$(cat $(PIDS_DIR)/broker1.pid) $$(cat $(PIDS_DIR)/broker2.pid) $$(cat $(PIDS_DIR)/broker3.pid) 2>/dev/null || true
+	@echo "$(YELLOW)▸ Stopping ZK-only Brokers gracefully...$(NC)"
+	@kill -15 $$(cat $(PIDS_DIR)/broker1.pid) $$(cat $(PIDS_DIR)/broker2.pid) $$(cat $(PIDS_DIR)/broker3.pid) 2>/dev/null || true
+	@sleep 8
 	
 	@echo "$(YELLOW)▸ Starting Brokers in Bridge Mode (4GB Heap)...$(NC)"
 	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase1/broker1.properties > $(LOGS_DIR)/broker1.log 2>&1 & echo $$! > $(PIDS_DIR)/broker1.pid
