@@ -27,7 +27,7 @@ RED    :=\033[0;31m
 CYAN   :=\033[0;36m
 NC     :=\033[0m
 
-.PHONY: help download download-v4 setup-dirs start cluster-id check-version list-topics produce-messages consume-messages controllers bridge kraft verify-bridge verify-zookeeper verify-controllers verify-kraft phase3 check-pid status kill clean all
+.PHONY: help download download-v4 setup-dirs start cluster-id check-version list-topics produce-messages consume-messages controllers bridge kraft verify-bridge verify-zookeeper verify-controllers verify-kraft upgrade check-pid status kill clean all
 
 help:
 	@echo "$(CYAN)Kafka Binary Migration Demo Targets$(NC)"
@@ -46,7 +46,7 @@ help:
 	@echo "$(YELLOW)verify-controllers$(NC)- Interrogate KRaft quorum to prove meta-data election"
 	@echo "$(YELLOW)kraft$(NC)          - Finalize KRaft (Irreversible!) - Restart brokers in KRaft mode"
 	@echo "$(YELLOW)verify-kraft$(NC) - Final validation + create new topic"
-	@echo "$(YELLOW)phase3$(NC)         - Rolling Upgrade to Kafka V4 (Phase 3)"
+	@echo "$(YELLOW)upgrade$(NC)        - Rolling Upgrade to Kafka V4 (Phase 3)"
 	@echo "$(YELLOW)check-pid$(NC)      - Check details of a specific process (usage: make check-pid PID=123)"
 	@echo "$(YELLOW)status$(NC)         - Check running Java PIDs"
 	@echo "$(YELLOW)clean$(NC)          - Kill all PIDs and wipe data/logs"
@@ -271,7 +271,7 @@ kraft:
 
 # ── Phase 3 ───────────────────────────────────────────────────
 
-phase3: download-v4
+upgrade: download-v4
 	@echo "\n$(CYAN)━━━ PHASE 3 — Kafka 4.2.0 Rolling Upgrade ━━━$(NC)"
 	
 	@echo "$(YELLOW)▸ Rolling Upgrade: Controller 1 to V4...$(NC)"
@@ -343,4 +343,4 @@ clean: kill
 	@rm -rf $(DATA_DIR)/* $(LOGS_DIR)/* $(PIDS_DIR)/* .cluster-id
 	@echo "$(GREEN)✓ Clean complete.$(NC)"
 
-all: start cluster-id controllers bridge verify-bridge kraft verify-kraft phase3
+all: start cluster-id controllers bridge verify-bridge kraft verify-kraft upgrade
