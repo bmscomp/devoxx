@@ -449,7 +449,7 @@ Before finalizing, run through this checklist:
 
 ```bash
 # Stop the bridge mode cluster and trigger pure KRaft rolling restart
-make phase2
+make kraft
 
 # Wait for stabilization
 sleep 15
@@ -787,7 +787,7 @@ make bridge
 make verify-bridge
 
 # Step 5 — Finalize: KRaft only, no ZooKeeper (⚠ irreversible!)
-make phase2
+make kraft
 
 # Step 6 — Validate everything post-migration
 make verify-kraft
@@ -817,7 +817,7 @@ make clean
 | `make cluster-id` | Phase 0.5 | Extract `cluster.id` from ZK and save to `.cluster-id` |
 | `make bridge` | Phase 1 | Stop ZK cluster → start Bridge Mode (ZK + 3 KRaft controllers) |
 | `make verify-bridge` | Verify | Check topics, consume 100 messages, produce 20 more |
-| `make phase2` | Phase 2 | Stop Bridge → start KRaft-only (**irreversible!**) |
+| `make kraft` | Phase 2 | Stop Bridge → start KRaft-only (**irreversible!**) |
 | `make verify-kraft` | Verify | Full validation: topics, data (120 msgs), writes, new topic creation |
 | `make status` | Utility | Show running processes |
 | `make clean` | Utility | Tear down all processes + volumes |
