@@ -207,19 +207,29 @@ verify-kraft:
 
 phase2:
 	@echo "\n$(CYAN)━━━ PHASE 2 — KRaft Only Mode (Irreversible) ━━━$(NC)"
-	@echo "$(YELLOW)▸ Stopping Bridge Brokers...$(NC)"
-	@kill -9 $$(cat $(PIDS_DIR)/broker1.pid) $$(cat $(PIDS_DIR)/broker2.pid) $$(cat $(PIDS_DIR)/broker3.pid) 2>/dev/null || true
+	
+	@echo "$(YELLOW)▸ Rolling Restart: Broker 1 (KRaft Mode)...$(NC)"
+	@kill -15 $$(cat $(PIDS_DIR)/broker1.pid) 2>/dev/null || true
+	@sleep 6
+	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase2/broker1.properties > $(LOGS_DIR)/broker1.log 2>&1 & echo $$! > $(PIDS_DIR)/broker1.pid
+	@sleep 6
+	
+	@echo "$(YELLOW)▸ Rolling Restart: Broker 2 (KRaft Mode)...$(NC)"
+	@kill -15 $$(cat $(PIDS_DIR)/broker2.pid) 2>/dev/null || true
+	@sleep 6
+	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase2/broker2.properties > $(LOGS_DIR)/broker2.log 2>&1 & echo $$! > $(PIDS_DIR)/broker2.pid
+	@sleep 6
+	
+	@echo "$(YELLOW)▸ Rolling Restart: Broker 3 (KRaft Mode)...$(NC)"
+	@kill -15 $$(cat $(PIDS_DIR)/broker3.pid) 2>/dev/null || true
+	@sleep 6
+	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase2/broker3.properties > $(LOGS_DIR)/broker3.log 2>&1 & echo $$! > $(PIDS_DIR)/broker3.pid
+	@sleep 6
 	
 	@echo "$(YELLOW)▸ Stopping ZooKeeper Ensemble forever...$(NC)"
-	@kill -9 $$(cat $(PIDS_DIR)/zk1.pid) $$(cat $(PIDS_DIR)/zk2.pid) $$(cat $(PIDS_DIR)/zk3.pid) 2>/dev/null || true
+	@kill -15 $$(cat $(PIDS_DIR)/zk1.pid) $$(cat $(PIDS_DIR)/zk2.pid) $$(cat $(PIDS_DIR)/zk3.pid) 2>/dev/null || true
 	@rm $(PIDS_DIR)/zk*.pid || true
 	
-	@echo "$(YELLOW)▸ Restarting Brokers in pure KRaft Mode (4GB Heap)...$(NC)"
-	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase2/broker1.properties > $(LOGS_DIR)/broker1.log 2>&1 & echo $$! > $(PIDS_DIR)/broker1.pid
-	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase2/broker2.properties > $(LOGS_DIR)/broker2.log 2>&1 & echo $$! > $(PIDS_DIR)/broker2.pid
-	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase2/broker3.properties > $(LOGS_DIR)/broker3.log 2>&1 & echo $$! > $(PIDS_DIR)/broker3.pid
-	
-	@sleep 10
 	@echo "$(GREEN)✓ Phase 2 complete. ZooKeeper is dead!$(NC)"
 
 # ── Status & Cleanup ──────────────────────────────────────────
