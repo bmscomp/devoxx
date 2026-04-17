@@ -69,7 +69,7 @@ setup-dirs:
 # ── Process Management Utility ────────────────────────────────
 
 kill:
-	@echo "$(YELLOW)▸ Killing all known demo processes...$(NC)"
+	@echo "$(YELLOW)▸ Killing all tracked demo processes...$(NC)"
 	@for pidfile in $(PIDS_DIR)/*.pid; do \
 		if [ -f "$$pidfile" ]; then \
 			pid=$$(cat $$pidfile); \
@@ -77,6 +77,9 @@ kill:
 			rm $$pidfile; \
 		fi \
 	done
+	@echo "$(YELLOW)▸ Sweeping for orphaned Kafka/ZK JVMs...$(NC)"
+	@pkill -f "demos/migration/config" 2>/dev/null || true
+	@sleep 2
 	@echo "$(GREEN)✓ All processes killed.$(NC)"
 
 # ── Phase 0 ───────────────────────────────────────────────────
