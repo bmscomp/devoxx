@@ -27,7 +27,7 @@ RED    :=\033[0;31m
 CYAN   :=\033[0;36m
 NC     :=\033[0m
 
-.PHONY: help download download-v4 setup-dirs cluster cluster-id check-version list-topics produce-messages consume-messages phase0.5 phase1 phase2 verify-bridge verify-kraft phase3 check-pid status kill clean all
+.PHONY: help download download-v4 setup-dirs cluster cluster-id check-version list-topics produce-messages consume-messages controllers phase1 phase2 verify-bridge verify-kraft phase3 check-pid status kill clean all
 
 help:
 	@echo "$(CYAN)Kafka Binary Migration Demo Targets$(NC)"
@@ -39,7 +39,7 @@ help:
 	@echo "$(YELLOW)list-topics$(NC)    - List all current topics in the cluster"
 	@echo "$(YELLOW)produce-messages$(NC)- Open an interactive console producer"
 	@echo "$(YELLOW)consume-messages$(NC)- Consume all messages from 'devoxx-topic'"
-	@echo "$(YELLOW)phase0.5$(NC)       - Format and start KRaft Controllers cleanly before bridging"
+	@echo "$(YELLOW)controllers$(NC)       - Format and start KRaft Controllers cleanly before bridging"
 	@echo "$(YELLOW)phase1$(NC)         - Rolling Restart of Brokers into Bridge Mode"
 	@echo "$(YELLOW)verify-bridge$(NC)- Verify topics & produce messages in Bridge Mode"
 	@echo "$(YELLOW)phase2$(NC)         - Finalize KRaft (Irreversible!) - Restart brokers in KRaft mode"
@@ -166,7 +166,7 @@ consume-messages:
 
 # ── Phase 0.5 ─────────────────────────────────────────────────
 
-phase0.5:
+controllers:
 	@echo "\n$(CYAN)━━━ PHASE 0.5 — KRaft Controller Quorum Initialization ━━━$(NC)"
 	@if [ ! -f .cluster-id ]; then echo "$(RED)No .cluster-id found. Run 'make cluster-id' first.$(NC)"; exit 1; fi
 	
@@ -334,4 +334,4 @@ clean: kill
 	@rm -rf $(DATA_DIR)/* $(LOGS_DIR)/* $(PIDS_DIR)/* .cluster-id
 	@echo "$(GREEN)✓ Clean complete.$(NC)"
 
-all: cluster cluster-id phase0.5 phase1 verify-bridge phase2 verify-kraft phase3
+all: cluster cluster-id controllers phase1 verify-bridge phase2 verify-kraft phase3
