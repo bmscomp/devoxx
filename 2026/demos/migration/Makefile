@@ -311,11 +311,13 @@ upgrade: download-v4
 	@kill -15 $$(cat $(PIDS_DIR)/broker3.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/broker3.properties > $(LOGS_DIR)/broker3.log 2>&1 & echo $$! > $(PIDS_DIR)/broker3.pid
-	@sleep 6
+	
+	@echo "$(GREEN)▸ Waiting 20s for the KRaft Quorum to synchronize Node features...$(NC)"
+	@sleep 20
 	
 	@echo "\n$(YELLOW)▸ 3. Finalizing Metadata Feature Version Bump...$(NC)"
 	@echo "$(CYAN)ℹ EXPLANATION: All nodes are safely running Kafka V4 infrastructure, however the underlying metadata schema is still functionally bound to 3.9 natively. We run kafka-features.sh to permanently ratify the structure to 4.2.$(NC)"
-	@$(KAFKA_BIN_V4)/kafka-features.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 upgrade --metadata 4.2
+	@$(KAFKA_BIN_V4)/kafka-features.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 upgrade --feature metadata.version=4.2
 	@echo "$(GREEN)✓ Upgrade sequence complete. Cluster is natively executing Kafka 4.2.0!$(NC)"
 
 # ── Status & Cleanup ──────────────────────────────────────────
