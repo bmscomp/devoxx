@@ -21,7 +21,7 @@ RED    :=\033[0;31m
 CYAN   :=\033[0;36m
 NC     :=\033[0m
 
-.PHONY: help download setup-dirs phase0 cluster-id check-version list-topics produce-messages consume-messages phase1 phase2 verify-bridge verify-kraft check-pid status kill clean all
+.PHONY: help download setup-dirs phase0 cluster-id check-version list-topics produce-messages consume-messages phase0.5 phase1 phase2 verify-bridge verify-kraft check-pid status kill clean all
 
 help:
 	@echo "$(CYAN)Kafka Binary Migration Demo Targets$(NC)"
@@ -33,7 +33,8 @@ help:
 	@echo "$(YELLOW)list-topics$(NC)    - List all current topics in the cluster"
 	@echo "$(YELLOW)produce-messages$(NC)- Open an interactive console producer"
 	@echo "$(YELLOW)consume-messages$(NC)- Consume all messages from 'migration-test'"
-	@echo "$(YELLOW)phase1$(NC)         - Restart Brokers in Bridge Mode + KRaft Controllers"
+	@echo "$(YELLOW)phase0.5$(NC)       - Format and start KRaft Controllers cleanly before bridging"
+	@echo "$(YELLOW)phase1$(NC)         - Rolling Restart of Brokers into Bridge Mode"
 	@echo "$(YELLOW)verify-bridge$(NC)- Verify topics & produce messages in Bridge Mode"
 	@echo "$(YELLOW)phase2$(NC)         - Finalize KRaft (Irreversible!) - Restart brokers in KRaft mode"
 	@echo "$(YELLOW)verify-kraft$(NC) - Final validation + create new topic"
@@ -132,10 +133,10 @@ consume-messages:
 	@echo "\n$(CYAN)━━━ Reading from 'migration-test' ━━━$(NC)"
 	@$(KAFKA_BIN)/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic migration-test --from-beginning
 
-# ── Phase 1 ───────────────────────────────────────────────────
+# ── Phase 0.5 ─────────────────────────────────────────────────
 
-phase1:
-	@echo "\n$(CYAN)━━━ PHASE 1 — Bridge Mode (Dual Write) ━━━$(NC)"
+phase0.5:
+	@echo "\n$(CYAN)━━━ PHASE 0.5 — KRaft Controller Quorum Initialization ━━━$(NC)"
 	@if [ ! -f .cluster-id ]; then echo "$(RED)No .cluster-id found. Run 'make cluster-id' first.$(NC)"; exit 1; fi
 	
 	@echo "$(YELLOW)▸ Formatting KRaft Controllers with cluster ID...$(NC)"
@@ -148,6 +149,12 @@ phase1:
 	@$(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase1/controller2.properties > $(LOGS_DIR)/controller2.log 2>&1 & echo $$! > $(PIDS_DIR)/controller2.pid
 	@$(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase1/controller3.properties > $(LOGS_DIR)/controller3.log 2>&1 & echo $$! > $(PIDS_DIR)/controller3.pid
 	@sleep 5
+	@echo "$(GREEN)✓ KRaft Controllers successfully booted metadata quorum!$(NC)"
+
+# ── Phase 1 ───────────────────────────────────────────────────
+
+phase1:
+	@echo "\n$(CYAN)━━━ PHASE 1 — Bridge Mode (Dual Write) ━━━$(NC)"
 	
 	@echo "$(YELLOW)▸ Rolling Restart: Broker 1 (Bridge Mode)...$(NC)"
 	@kill -15 $$(cat $(PIDS_DIR)/broker1.pid) 2>/dev/null || true
@@ -241,4 +248,4 @@ clean: kill
 	@rm -rf $(DATA_DIR)/* $(LOGS_DIR)/* $(PIDS_DIR)/* .cluster-id
 	@echo "$(GREEN)✓ Clean complete.$(NC)"
 
-all: phase0 cluster-id phase1 verify-bridge phase2 verify-kraft
+all: phase0 cluster-id phase0.5 phase1 verify-bridge phase2 verify-kraft
