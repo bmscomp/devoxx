@@ -82,11 +82,11 @@ Finalization is the **one-way door**. Once you finalize:
 
 | Requirement | Minimum | Recommended |
 |---|---|---|
-| **Docker** | Docker 24+ with Compose V2 | Latest stable |
+| **Java** | JDK 17 | JDK 21+ |
 | **Kafka version** | 3.7.0 | **3.9.2** (latest with ZK+KRaft support) |
 | **ZooKeeper version** | 3.8.x | 3.9.x |
-| **Disk space** | 2 GB (images + volumes) | 5 GB (with headroom) |
-| **Available ports** | 2181-2183, 9092-9094 | Check with `lsof -i` |
+| **Disk space** | 1 GB | 2 GB (with headroom) |
+| **Available ports** | 2181-2183, 9092-9095 | Check with `lsof -i` |
 
 ### Operational Requirements
 
@@ -145,7 +145,7 @@ This phase establishes the starting point: a healthy ZooKeeper-based Kafka 3.9.2
 ### Step 0.1 — Start the ZooKeeper Cluster
 
 ```bash
-background JVM processes -f docker-compose-zk.yml up -d
+make phase0
 ```
 
 This starts:
@@ -245,11 +245,9 @@ ClusterIdMismatchException: The cluster ID xyz does not match the expected clust
 
 ```bash
 # Read the cluster ID from ZooKeeper
-docker exec zookeeper-1 bash -c '
-  echo "get /cluster/id" | /opt/bitnami/zookeeper/bin/zkCli.sh \
-    -server localhost:2181 2>/dev/null \
-  | grep -o '"'"'"id":"[^"]*"'"'"' | cut -d\" -f4
-'
+echo "get /cluster/id" | kafka-dist/bin/zookeeper-shell.sh \
+  localhost:2181 2>/dev/null \
+  | grep -o '"id":"[^"]*"' | cut -d\" -f4
 ```
 
 This will output something like: `MkU3OEVBNTcwNTJENDM2Qg`
@@ -328,7 +326,8 @@ This is crucial and must be planned before you start:
 ### Step 1.1 — Stop the ZK-Only Cluster
 
 ```bash
-background JVM processes -f docker-compose-zk.yml down
+# Handled gracefully via the rolling restarts in:
+make phase1
 ```
 
 > **Note:** In a real production environment, you would NOT stop the entire cluster. Instead, you would perform a **rolling restart**: add the new configuration properties to each broker one at a time, restart it, verify it rejoins the cluster, then move to the next broker. The Native Binaries approach here stops and restarts everything at once for demo simplicity.
@@ -336,11 +335,8 @@ background JVM processes -f docker-compose-zk.yml down
 ### Step 1.2 — Start Bridge Mode
 
 ```bash
-# Ensure the CLUSTER_ID is set
-export CLUSTER_ID=$(cat .cluster-id)
-
-# Start the bridge mode cluster
-background JVM processes -f docker-compose-bridge.yml up -d
+# The bridge mode rolling restart triggers seamlessly:
+make phase1
 ```
 
 This starts:
@@ -452,15 +448,11 @@ Before finalizing, run through this checklist:
 ### Step 2.2 — Finalize
 
 ```bash
-# Stop the bridge mode cluster
-background JVM processes -f docker-compose-bridge.yml down
-
-# Start KRaft-only cluster (no ZooKeeper services at all)
-export CLUSTER_ID=$(cat .cluster-id)
-background JVM processes -f docker-compose-kraft.yml up -d
+# Stop the bridge mode cluster and trigger pure KRaft rolling restart
+make phase2
 
 # Wait for stabilization
-sleep 30
+sleep 15
 ```
 
 > **In production:** The finalization is done by removing `zookeeper.connect` and `zookeeper.metadata.migration.enable` from all broker configs, then performing a rolling restart. The KRaft controllers also need their migration properties removed and a rolling restart.
@@ -469,11 +461,11 @@ sleep 30
 
 ```bash
 # Confirm no ZooKeeper processes are running
-docker ps --filter "name=zookeeper" --format "{{.Names}}"
+pgrep -f zookeeper
 # Expected: (empty output)
 
 # Confirm only KRaft controllers and brokers are running
-docker ps --format "table {{.Names}}\t{{.Status}}"
+make status
 ```
 
 You should see exactly 6 processes: 3 controllers and 3 brokers.
@@ -571,14 +563,7 @@ Once your cluster is running KRaft-only on Kafka 3.9.2, upgrading to Kafka 4.x i
 
 ### Steps
 
-1. **Update the image tag** in your compose file:
-   ```yaml
-   # From:
-   image: apache/kafka:3.9.2
-   # To:
-   image: apache/kafka:4.2.0
-   ```
-
+1. **Update the downloaded binary version** to the 4.x release.
 2. **Rolling restart controllers first**, then brokers — one at a time, verifying cluster health after each restart.
 
 3. **Remove legacy properties** that are no longer needed in 4.x (the ZK-related ones were already removed during migration).
@@ -717,7 +702,7 @@ Fix any issues before proceeding.
 
 **Diagnosis:**
 ```bash
-docker logs controller-1 2>&1 | tail -50
+tail -n 50 logs/controller1.log
 ```
 
 **Common causes:**
@@ -735,7 +720,7 @@ docker logs controller-1 2>&1 | tail -50
 **Diagnosis:**
 ```bash
 # Check broker logs for migration-related warnings
-docker logs broker-1 2>&1 | grep -i "migrat" | tail -20
+grep -i "migrat" logs/broker1.log | tail -n 20
 ```
 
 **Common causes:**
@@ -751,12 +736,13 @@ docker logs broker-1 2>&1 | grep -i "migrat" | tail -20
 
 **Diagnosis:**
 ```bash
-docker logs controller-1 2>&1 | grep -i "error\|warn\|sync" | tail -30
+grep -i "error\|warn\|sync" logs/controller1.log | tail -n 30
 ```
 
 **Resolution:** Usually resolves on its own after the Active Controller re-reads the full metadata tree. If it persists, try restarting the Active Controller:
 ```bash
-docker restart controller-1
+kill -15 $(cat .pids/controller1.pid)
+# Restart via make or native command...
 ```
 
 ---
@@ -860,9 +846,6 @@ demos/migration/
 │   ├── phase0-zk-mode.png
 │   ├── phase1-bridge-mode.png
 │   └── phase2-kraft-only.png
-├── docker-compose-zk.yml       # Phase 0: ZooKeeper-based Kafka 3.9.2
-├── docker-compose-bridge.yml   # Phase 1: Bridge mode (ZK + KRaft dual-write)
-├── docker-compose-kraft.yml    # Phase 2: KRaft-only (no ZooKeeper)
 ├── migrate.sh                  # Interactive migration demo script
 ├── cleanup.sh                  # Tear down all processes and volumes
 └── .cluster-id                 # Created at runtime — holds the cluster ID
