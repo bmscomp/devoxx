@@ -150,7 +150,12 @@ list-topics:
 produce-messages:
 	@echo "\n$(CYAN)━━━ Auto-Publishing to 'migration-test' ━━━$(NC)"
 	@echo "$(YELLOW)Sending an incremented message every 0.6 seconds. Press Ctrl+C to stop.$(NC)"
-	@bash -c 'i=1; while true; do echo "devoxx-$$i-$$(date +"%Y-%m-%d %H:%M:%S")"; i=$$((i+1)); sleep 0.6; done' | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic migration-test
+	@python3 -u -c 'import time, datetime; i=1; \
+	while True: \
+		ts=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]; \
+		print(f"devoxx-{i}-{ts}", flush=True); \
+		i+=1; \
+		time.sleep(0.6)' | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic migration-test
 
 consume-messages:
 	@echo "\n$(CYAN)━━━ Reading from 'migration-test' ━━━$(NC)"
