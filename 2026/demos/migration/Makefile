@@ -21,7 +21,7 @@ RED    :=\033[0;31m
 CYAN   :=\033[0;36m
 NC     :=\033[0m
 
-.PHONY: help download setup-dirs phase0 cluster-id list-topics phase1 phase2 verify-bridge verify-kraft status kill clean all
+.PHONY: help download setup-dirs phase0 cluster-id list-topics produce-messages consume-messages phase1 phase2 verify-bridge verify-kraft status kill clean all
 
 help:
 	@echo "$(CYAN)Kafka Binary Migration Demo Targets$(NC)"
@@ -30,6 +30,8 @@ help:
 	@echo "$(YELLOW)phase0$(NC)         - Start ZK Ensemble + Kafka Brokers (ZK Mode)"
 	@echo "$(YELLOW)cluster-id$(NC)     - Extract cluster ID via zookeeper-shell string parsing"
 	@echo "$(YELLOW)list-topics$(NC)    - List all current topics in the cluster"
+	@echo "$(YELLOW)produce-messages$(NC)- Open an interactive console producer"
+	@echo "$(YELLOW)consume-messages$(NC)- Consume all messages from 'migration-test'"
 	@echo "$(YELLOW)phase1$(NC)         - Restart Brokers in Bridge Mode + KRaft Controllers"
 	@echo "$(YELLOW)verify-bridge$(NC)- Verify topics & produce messages in Bridge Mode"
 	@echo "$(YELLOW)phase2$(NC)         - Finalize KRaft (Irreversible!) - Restart brokers in KRaft mode"
@@ -114,6 +116,15 @@ cluster-id:
 list-topics:
 	@echo "\n$(CYAN)━━━ Listing All Topics ━━━$(NC)"
 	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092 --list
+
+produce-messages:
+	@echo "\n$(CYAN)━━━ Writing to 'migration-test' ━━━$(NC)"
+	@echo "$(YELLOW)Type your messages below and press Enter. Press Ctrl+C to exit.$(NC)"
+	@$(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic migration-test
+
+consume-messages:
+	@echo "\n$(CYAN)━━━ Reading from 'migration-test' ━━━$(NC)"
+	@$(KAFKA_BIN)/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic migration-test --from-beginning
 
 # ── Phase 1 ───────────────────────────────────────────────────
 
