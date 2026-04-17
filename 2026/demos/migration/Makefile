@@ -148,9 +148,9 @@ list-topics:
 	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092 --list
 
 produce-messages:
-	@echo "\n$(CYAN)━━━ Writing to 'migration-test' ━━━$(NC)"
-	@echo "$(YELLOW)Type your messages below and press Enter. Press Ctrl+C to exit.$(NC)"
-	@$(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic migration-test
+	@echo "\n$(CYAN)━━━ Auto-Publishing to 'migration-test' ━━━$(NC)"
+	@echo "$(YELLOW)Sending an incremented message every 0.6 seconds. Press Ctrl+C to stop.$(NC)"
+	@bash -c 'i=1; while true; do echo "Auto-message-$$i"; i=$$((i+1)); sleep 0.6; done' | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic migration-test
 
 consume-messages:
 	@echo "\n$(CYAN)━━━ Reading from 'migration-test' ━━━$(NC)"
