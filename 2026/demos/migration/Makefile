@@ -27,7 +27,7 @@ RED    :=\033[0;31m
 CYAN   :=\033[0;36m
 NC     :=\033[0m
 
-.PHONY: help download download-v4 setup-dirs start cluster-id check-version list-topics produce-messages consume-messages controllers bridge phase2 verify-bridge verify-zookeeper verify-kraft phase3 check-pid status kill clean all
+.PHONY: help download download-v4 setup-dirs start cluster-id check-version list-topics produce-messages consume-messages controllers bridge phase2 verify-bridge verify-zookeeper verify-controllers verify-kraft phase3 check-pid status kill clean all
 
 help:
 	@echo "$(CYAN)Kafka Binary Migration Demo Targets$(NC)"
@@ -43,6 +43,7 @@ help:
 	@echo "$(YELLOW)bridge$(NC)         - Rolling Restart of Brokers into Bridge Mode"
 	@echo "$(YELLOW)verify-bridge$(NC)- Verify topics & produce messages in Bridge Mode"
 	@echo "$(YELLOW)verify-zookeeper$(NC)- Poll Zookeeper znodes to prove topological health"
+	@echo "$(YELLOW)verify-controllers$(NC)- Interrogate KRaft quorum to prove meta-data election"
 	@echo "$(YELLOW)phase2$(NC)         - Finalize KRaft (Irreversible!) - Restart brokers in KRaft mode"
 	@echo "$(YELLOW)verify-kraft$(NC) - Final validation + create new topic"
 	@echo "$(YELLOW)phase3$(NC)         - Rolling Upgrade to Kafka V4 (Phase 3)"
@@ -212,6 +213,11 @@ verify-zookeeper:
 	@$(KAFKA_BIN)/zookeeper-shell.sh localhost:2181 ls /brokers/ids 2>/dev/null || echo "$(RED) ZooKeeper offline.$(NC)"
 	@echo "\n$(YELLOW)▸ Checking Broker 1 exact metadata map:$(NC)"
 	@$(KAFKA_BIN)/zookeeper-shell.sh localhost:2181 get /brokers/ids/1 2>/dev/null || echo "$(RED) Broker 1 offline.$(NC)"
+
+verify-controllers:
+	@echo "\n$(CYAN)━━━ VERIFY: KRaft Controller Quorum ━━━$(NC)"
+	@echo "$(YELLOW)▸ Fetching consensus metadata via kafka-metadata-quorum.sh:$(NC)"
+	@$(KAFKA_BIN)/kafka-metadata-quorum.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 describe --status 2>/dev/null || echo "$(RED) KRaft Quorum offline or unreachable.$(NC)"
 
 verify-bridge:
 	@echo "$(CYAN)━━━ VERIFY: Bridge Mode ━━━$(NC)"
