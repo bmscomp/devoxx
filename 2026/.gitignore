@@ -1,1 +1,5 @@
 demos/migration/kafka-dist/
+demos/migration/.pids/
+demos/migration/data/
+demos/migration/logs/
+demos/migration/.cluster-id
