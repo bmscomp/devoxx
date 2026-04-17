@@ -273,46 +273,50 @@ kraft:
 
 upgrade: download-v4
 	@echo "\n$(CYAN)━━━ PHASE 3 — Kafka 4.2.0 Rolling Upgrade ━━━$(NC)"
+	@echo "$(CYAN)ℹ EXPLANATION: Upgrading major Kafka versions is executed natively as a rolling restart while the cluster remains fully operational, guaranteeing zero downtime.$(NC)"
 	
-	@echo "$(YELLOW)▸ Rolling Upgrade: Controller 1 to V4...$(NC)"
+	@echo "\n$(YELLOW)▸ 1. Rolling Upgrade: Control Plane (Controllers to V4)...$(NC)"
+	@echo "$(CYAN)ℹ EXPLANATION: We strictly upgrade the KRaft controllers first. The control plane must always utilize a binary equal to or newer than the broker pool.$(NC)"
 	@kill -15 $$(cat $(PIDS_DIR)/controller1.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx1G -Xms1G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/controller1.properties > $(LOGS_DIR)/controller1.log 2>&1 & echo $$! > $(PIDS_DIR)/controller1.pid
 	@sleep 6
 
-	@echo "$(YELLOW)▸ Rolling Upgrade: Controller 2 to V4...$(NC)"
+	@echo "$(YELLOW)▸ Upgrading Controller 2...$(NC)"
 	@kill -15 $$(cat $(PIDS_DIR)/controller2.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx1G -Xms1G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/controller2.properties > $(LOGS_DIR)/controller2.log 2>&1 & echo $$! > $(PIDS_DIR)/controller2.pid
 	@sleep 6
 
-	@echo "$(YELLOW)▸ Rolling Upgrade: Controller 3 to V4...$(NC)"
+	@echo "$(YELLOW)▸ Upgrading Controller 3...$(NC)"
 	@kill -15 $$(cat $(PIDS_DIR)/controller3.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx1G -Xms1G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/controller3.properties > $(LOGS_DIR)/controller3.log 2>&1 & echo $$! > $(PIDS_DIR)/controller3.pid
 	@sleep 6
 
-	@echo "$(YELLOW)▸ Rolling Upgrade: Broker 1 to V4...$(NC)"
+	@echo "\n$(YELLOW)▸ 2. Rolling Upgrade: Data Plane (Brokers to V4)...$(NC)"
+	@echo "$(CYAN)ℹ EXPLANATION: Now that the KRaft control plane is running V4, we sequentially rolling-restart all data brokers to map them to the V4 binaries.$(NC)"
 	@kill -15 $$(cat $(PIDS_DIR)/broker1.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/broker1.properties > $(LOGS_DIR)/broker1.log 2>&1 & echo $$! > $(PIDS_DIR)/broker1.pid
 	@sleep 6
 
-	@echo "$(YELLOW)▸ Rolling Upgrade: Broker 2 to V4...$(NC)"
+	@echo "$(YELLOW)▸ Upgrading Broker 2...$(NC)"
 	@kill -15 $$(cat $(PIDS_DIR)/broker2.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/broker2.properties > $(LOGS_DIR)/broker2.log 2>&1 & echo $$! > $(PIDS_DIR)/broker2.pid
 	@sleep 6
 
-	@echo "$(YELLOW)▸ Rolling Upgrade: Broker 3 to V4...$(NC)"
+	@echo "$(YELLOW)▸ Upgrading Broker 3...$(NC)"
 	@kill -15 $$(cat $(PIDS_DIR)/broker3.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/broker3.properties > $(LOGS_DIR)/broker3.log 2>&1 & echo $$! > $(PIDS_DIR)/broker3.pid
 	@sleep 6
 	
-	@echo "$(YELLOW)▸ Triggering V4 metadata structural upgrade...$(NC)"
+	@echo "\n$(YELLOW)▸ 3. Finalizing Metadata Feature Version Bump...$(NC)"
+	@echo "$(CYAN)ℹ EXPLANATION: All nodes are safely running Kafka V4 infrastructure, however the underlying metadata schema is still functionally bound to 3.9 natively. We run kafka-features.sh to permanently ratify the structure to 4.2.$(NC)"
 	@$(KAFKA_BIN_V4)/kafka-features.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 upgrade --metadata 4.2
-	@echo "$(GREEN)✓ Phase 3 complete. Cluster is now 100% Kafka 4.2.0!$(NC)"
+	@echo "$(GREEN)✓ Upgrade sequence complete. Cluster is natively executing Kafka 4.2.0!$(NC)"
 
 # ── Status & Cleanup ──────────────────────────────────────────
 
