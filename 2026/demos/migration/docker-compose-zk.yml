@@ -14,7 +14,7 @@ services:
   # ── ZooKeeper Ensemble ──────────────────────────────────────
 
   zookeeper-1:
-    image: bitnami/zookeeper:3.9
+    image: bitnami/zookeeper:latest
     container_name: zookeeper-1
     hostname: zookeeper-1
     ports:
@@ -29,7 +29,7 @@ services:
       - kafka-net
 
   zookeeper-2:
-    image: bitnami/zookeeper:3.9
+    image: bitnami/zookeeper:latest
     container_name: zookeeper-2
     hostname: zookeeper-2
     ports:
@@ -44,7 +44,7 @@ services:
       - kafka-net
 
   zookeeper-3:
-    image: bitnami/zookeeper:3.9
+    image: bitnami/zookeeper:latest
     container_name: zookeeper-3
     hostname: zookeeper-3
     ports:
