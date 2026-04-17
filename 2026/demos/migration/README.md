@@ -774,22 +774,78 @@ docker restart controller-1
 
 ---
 
-## 14. Quick Start (Automated Demo)
+## 14. Quick Start
 
-For a live demo during a presentation, use the automated script:
+### Using Make (Recommended)
+
+The `Makefile` provides granular targets for each migration phase. Each target is self-documented with comments explaining exactly what happens.
 
 ```bash
-# Make scripts executable
-chmod +x migrate.sh cleanup.sh
-
-# Run the full interactive migration (pauses at each phase)
-./migrate.sh
-
-# When done, tear down everything
-./cleanup.sh
+# See all available targets
+make help
 ```
 
-The `migrate.sh` script walks through all phases with colored output and pauses at each step so you can explain what is happening to the audience.
+**Step-by-step (recommended for demos):**
+
+```bash
+# Step 1 — Start ZK cluster + create topic + produce 100 messages
+make phase0
+
+# Step 2 — Extract and save the cluster ID from ZooKeeper
+make cluster-id
+
+# Step 3 — Stop ZK cluster, start Bridge Mode (ZK + KRaft dual-write)
+make phase1
+
+# Step 4 — Verify data integrity in Bridge Mode
+make verify-bridge
+
+# Step 5 — Finalize: KRaft only, no ZooKeeper (⚠ irreversible!)
+make phase2
+
+# Step 6 — Validate everything post-migration
+make verify-kraft
+
+# Check what's running at any point
+make status
+
+# Tear down everything when done
+make clean
+```
+
+**Full end-to-end (non-interactive):**
+
+```bash
+# Run the entire migration in one command
+make all
+
+# Clean up
+make clean
+```
+
+### Makefile Targets Reference
+
+| Target | Phase | Description |
+|---|---|---|
+| `make phase0` | Phase 0 | Start 3 ZK nodes + 3 brokers, create topic, produce 100 messages |
+| `make cluster-id` | Phase 0.5 | Extract `cluster.id` from ZK and save to `.cluster-id` |
+| `make phase1` | Phase 1 | Stop ZK cluster → start Bridge Mode (ZK + 3 KRaft controllers) |
+| `make verify-bridge` | Verify | Check topics, consume 100 messages, produce 20 more |
+| `make phase2` | Phase 2 | Stop Bridge → start KRaft-only (**irreversible!**) |
+| `make verify-kraft` | Verify | Full validation: topics, data (120 msgs), writes, new topic creation |
+| `make status` | Utility | Show running containers |
+| `make clean` | Utility | Tear down all containers + volumes |
+| `make all` | All | Run Phase 0 → Phase 2 end-to-end |
+
+### Using the Shell Script (Alternative)
+
+For an interactive demo with pauses at each step:
+
+```bash
+chmod +x migrate.sh cleanup.sh
+./migrate.sh
+./cleanup.sh
+```
 
 ---
 
@@ -797,7 +853,13 @@ The `migrate.sh` script walks through all phases with colored output and pauses 
 
 ```
 demos/migration/
+├── Makefile                     # Make targets for each migration phase
 ├── README.md                    # This guide
+├── img/                         # Architecture diagrams
+│   ├── three-phases-overview.png
+│   ├── phase0-zk-mode.png
+│   ├── phase1-bridge-mode.png
+│   └── phase2-kraft-only.png
 ├── docker-compose-zk.yml       # Phase 0: ZooKeeper-based Kafka 3.9.2
 ├── docker-compose-bridge.yml   # Phase 1: Bridge mode (ZK + KRaft dual-write)
 ├── docker-compose-kraft.yml    # Phase 2: KRaft-only (no ZooKeeper)
