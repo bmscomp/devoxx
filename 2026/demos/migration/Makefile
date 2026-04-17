@@ -21,7 +21,7 @@ RED    :=\033[0;31m
 CYAN   :=\033[0;36m
 NC     :=\033[0m
 
-.PHONY: help download setup-dirs phase0 cluster-id phase1 phase2 verify-bridge verify-kraft status kill clean all
+.PHONY: help download setup-dirs phase0 cluster-id list-topics phase1 phase2 verify-bridge verify-kraft status kill clean all
 
 help:
 	@echo "$(CYAN)Kafka Binary Migration Demo Targets$(NC)"
@@ -29,6 +29,7 @@ help:
 	@echo "$(YELLOW)download$(NC)       - Download Kafka $(KAFKA_VERSION) tarball"
 	@echo "$(YELLOW)phase0$(NC)         - Start ZK Ensemble + Kafka Brokers (ZK Mode)"
 	@echo "$(YELLOW)cluster-id$(NC)     - Extract cluster ID via zookeeper-shell string parsing"
+	@echo "$(YELLOW)list-topics$(NC)    - List all current topics in the cluster"
 	@echo "$(YELLOW)phase1$(NC)         - Restart Brokers in Bridge Mode + KRaft Controllers"
 	@echo "$(YELLOW)verify-bridge$(NC)- Verify topics & produce messages in Bridge Mode"
 	@echo "$(YELLOW)phase2$(NC)         - Finalize KRaft (Irreversible!) - Restart brokers in KRaft mode"
@@ -107,6 +108,12 @@ cluster-id:
 	fi; \
 	echo "$$CLUSTER_ID" > .cluster-id; \
 	echo "$(GREEN)✓ Captured existing Cluster ID: $$CLUSTER_ID$(NC)"; \
+
+# ── Utilities ─────────────────────────────────────────────────
+
+list-topics:
+	@echo "\n$(CYAN)━━━ Listing All Topics ━━━$(NC)"
+	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092 --list
 
 # ── Phase 1 ───────────────────────────────────────────────────
 
