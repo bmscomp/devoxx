@@ -78,7 +78,8 @@ kill:
 		fi \
 	done
 	@echo "$(YELLOW)▸ Sweeping for orphaned Kafka/ZK JVMs...$(NC)"
-	@pkill -f "demos/migration/config" 2>/dev/null || true
+	@pkill -f "config/zk" 2>/dev/null || true
+	@pkill -f "config/phase" 2>/dev/null || true
 	@sleep 2
 	@echo "$(GREEN)✓ All processes killed.$(NC)"
 
