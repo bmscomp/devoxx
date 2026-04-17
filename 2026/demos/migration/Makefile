@@ -27,7 +27,7 @@ RED    :=\033[0;31m
 CYAN   :=\033[0;36m
 NC     :=\033[0m
 
-.PHONY: help download download-v4 setup-dirs start cluster-id check-version list-topics produce-messages consume-messages controllers phase1 phase2 verify-bridge verify-kraft phase3 check-pid status kill clean all
+.PHONY: help download download-v4 setup-dirs start cluster-id check-version list-topics produce-messages consume-messages controllers bridge phase2 verify-bridge verify-kraft phase3 check-pid status kill clean all
 
 help:
 	@echo "$(CYAN)Kafka Binary Migration Demo Targets$(NC)"
@@ -40,7 +40,7 @@ help:
 	@echo "$(YELLOW)produce-messages$(NC)- Open an interactive console producer"
 	@echo "$(YELLOW)consume-messages$(NC)- Consume all messages from 'devoxx-topic'"
 	@echo "$(YELLOW)controllers$(NC)       - Format and start KRaft Controllers cleanly before bridging"
-	@echo "$(YELLOW)phase1$(NC)         - Rolling Restart of Brokers into Bridge Mode"
+	@echo "$(YELLOW)bridge$(NC)         - Rolling Restart of Brokers into Bridge Mode"
 	@echo "$(YELLOW)verify-bridge$(NC)- Verify topics & produce messages in Bridge Mode"
 	@echo "$(YELLOW)phase2$(NC)         - Finalize KRaft (Irreversible!) - Restart brokers in KRaft mode"
 	@echo "$(YELLOW)verify-kraft$(NC) - Final validation + create new topic"
@@ -184,7 +184,7 @@ controllers:
 
 # ── Phase 1 ───────────────────────────────────────────────────
 
-phase1:
+bridge:
 	@echo "\n$(CYAN)━━━ PHASE 1 — Bridge Mode (Dual Write) ━━━$(NC)"
 	
 	@echo "$(YELLOW)▸ Rolling Restart: Broker 1 (Bridge Mode)...$(NC)"
@@ -334,4 +334,4 @@ clean: kill
 	@rm -rf $(DATA_DIR)/* $(LOGS_DIR)/* $(PIDS_DIR)/* .cluster-id
 	@echo "$(GREEN)✓ Clean complete.$(NC)"
 
-all: start cluster-id controllers phase1 verify-bridge phase2 verify-kraft phase3
+all: start cluster-id controllers bridge verify-bridge phase2 verify-kraft phase3

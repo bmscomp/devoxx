@@ -327,7 +327,7 @@ This is crucial and must be planned before you start:
 
 ```bash
 # Handled gracefully via the rolling restarts in:
-make phase1
+make bridge
 ```
 
 > **Note:** In a real production environment, you would NOT stop the entire cluster. Instead, you would perform a **rolling restart**: add the new configuration properties to each broker one at a time, restart it, verify it rejoins the cluster, then move to the next broker. The Native Binaries approach here stops and restarts everything at once for demo simplicity.
@@ -336,7 +336,7 @@ make phase1
 
 ```bash
 # The bridge mode rolling restart triggers seamlessly:
-make phase1
+make bridge
 ```
 
 This starts:
@@ -781,7 +781,7 @@ make phase0
 make cluster-id
 
 # Step 3 — Stop ZK cluster, start Bridge Mode (ZK + KRaft dual-write)
-make phase1
+make bridge
 
 # Step 4 — Verify data integrity in Bridge Mode
 make verify-bridge
@@ -815,7 +815,7 @@ make clean
 |---|---|---|
 | `make phase0` | Phase 0 | Start 3 ZK nodes + 3 brokers, create topic, produce 100 messages |
 | `make cluster-id` | Phase 0.5 | Extract `cluster.id` from ZK and save to `.cluster-id` |
-| `make phase1` | Phase 1 | Stop ZK cluster → start Bridge Mode (ZK + 3 KRaft controllers) |
+| `make bridge` | Phase 1 | Stop ZK cluster → start Bridge Mode (ZK + 3 KRaft controllers) |
 | `make verify-bridge` | Verify | Check topics, consume 100 messages, produce 20 more |
 | `make phase2` | Phase 2 | Stop Bridge → start KRaft-only (**irreversible!**) |
 | `make verify-kraft` | Verify | Full validation: topics, data (120 msgs), writes, new topic creation |
