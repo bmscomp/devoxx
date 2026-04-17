@@ -142,10 +142,17 @@ cluster-id:
 
 check-version:
 	@echo "\n$(CYAN)━━━ Kafka Version ━━━$(NC)"
-	@echo "$(YELLOW)▸ CLI Binary Version:$(NC)"
-	@$(KAFKA_BIN)/kafka-topics.sh --version
-	@echo "\n$(YELLOW)▸ Active Cluster Feature Metadata:$(NC)"
-	@$(KAFKA_BIN)/kafka-features.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 describe 2>/dev/null || echo "$(RED)Cluster is currently offline or unreachable.$(NC)"
+	@if [ -d "$(KAFKA_DIR_V4)" ]; then \
+		echo "$(YELLOW)▸ Using V4 CLI Binary (4.2.0):$(NC)"; \
+		$(KAFKA_BIN_V4)/kafka-topics.sh --version; \
+		echo "\n$(YELLOW)▸ Active Cluster Feature Metadata (Parsed via V4):$(NC)"; \
+		$(KAFKA_BIN_V4)/kafka-features.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 describe 2>/dev/null || echo "$(RED)Cluster is currently offline or unreachable.$(NC)"; \
+	else \
+		echo "$(YELLOW)▸ Using V3 CLI Binary (3.9.x):$(NC)"; \
+		$(KAFKA_BIN)/kafka-topics.sh --version; \
+		echo "\n$(YELLOW)▸ Active Cluster Feature Metadata (Parsed via V3):$(NC)"; \
+		$(KAFKA_BIN)/kafka-features.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 describe 2>/dev/null || echo "$(RED)Cluster is currently offline or unreachable.$(NC)"; \
+	fi
 
 list-topics:
 	@echo "\n$(CYAN)━━━ Listing All Topics ━━━$(NC)"
