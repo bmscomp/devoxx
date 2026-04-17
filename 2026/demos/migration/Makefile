@@ -141,7 +141,10 @@ cluster-id:
 
 check-version:
 	@echo "\n$(CYAN)━━━ Kafka Version ━━━$(NC)"
+	@echo "$(YELLOW)▸ CLI Binary Version:$(NC)"
 	@$(KAFKA_BIN)/kafka-topics.sh --version
+	@echo "\n$(YELLOW)▸ Active Cluster Feature Metadata:$(NC)"
+	@$(KAFKA_BIN)/kafka-features.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 describe 2>/dev/null || echo "$(RED)Cluster is currently offline or unreachable.$(NC)"
 
 list-topics:
 	@echo "\n$(CYAN)━━━ Listing All Topics ━━━$(NC)"
