@@ -122,8 +122,8 @@ phase0: download setup-dirs
 	@sleep 15
 	
 	@echo "$(YELLOW)▸ Creating test topic & producing messages...$(NC)"
-	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic migration-test --partitions 6 --replication-factor 3
-	@seq 1 100 | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic migration-test
+	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --create --topic migration-test --partitions 6 --replication-factor 3
+	@seq 1 100 | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic migration-test
 	@echo "$(GREEN)✓ Phase 0 complete.$(NC)"
 
 # ── Extract Cluster ID ────────────────────────────────────────
@@ -145,16 +145,16 @@ check-version:
 
 list-topics:
 	@echo "\n$(CYAN)━━━ Listing All Topics ━━━$(NC)"
-	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092 --list
+	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --list
 
 produce-messages:
 	@echo "\n$(CYAN)━━━ Auto-Publishing to 'migration-test' ━━━$(NC)"
 	@echo "$(YELLOW)Sending an incremented message every 0.6 seconds. Press Ctrl+C to stop.$(NC)"
-	@bash -c 'i=1; while true; do echo "devoxx-$$i-$$(date +"%Y-%m-%d %H:%M:%S")"; i=$$((i+1)); sleep 0.6; done' | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic migration-test
+	@bash -c 'i=1; while true; do echo "devoxx-$$i-$$(date +"%Y-%m-%d %H:%M:%S")"; i=$$((i+1)); sleep 0.6; done' | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic migration-test
 
 consume-messages:
 	@echo "\n$(CYAN)━━━ Reading from 'migration-test' ━━━$(NC)"
-	@$(KAFKA_BIN)/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic migration-test --from-beginning
+	@$(KAFKA_BIN)/kafka-console-consumer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic migration-test --from-beginning
 
 # ── Phase 0.5 ─────────────────────────────────────────────────
 
@@ -204,23 +204,23 @@ phase1:
 
 verify-bridge:
 	@echo "$(CYAN)━━━ VERIFY: Bridge Mode ━━━$(NC)"
-	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092 --describe
+	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --describe
 	@echo "\n$(YELLOW)▸ Reading 100 messages to prove read path...$(NC)"
-	@MSG_COUNT=$$($(KAFKA_BIN)/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic migration-test --from-beginning --timeout-ms 5000 2>/dev/null | wc -l); \
+	@MSG_COUNT=$$($(KAFKA_BIN)/kafka-console-consumer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic migration-test --from-beginning --timeout-ms 5000 2>/dev/null | wc -l); \
 	echo "$(GREEN)   Read $$MSG_COUNT messages.$(NC)"
 	@echo "$(YELLOW)▸ Writing 20 NEW messages to prove write path...$(NC)"
-	@seq 101 120 | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic migration-test
+	@seq 101 120 | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic migration-test
 	@echo "$(GREEN)✓ Bridge verification complete.$(NC)"
 
 verify-kraft:
 	@echo "$(CYAN)━━━ VERIFY: KRaft Mode ━━━$(NC)"
 	@echo "$(YELLOW)▸ Reading total 120 messages...$(NC)"
-	@MSG_COUNT=$$($(KAFKA_BIN)/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic migration-test --from-beginning --timeout-ms 5000 2>/dev/null | wc -l); \
+	@MSG_COUNT=$$($(KAFKA_BIN)/kafka-console-consumer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic migration-test --from-beginning --timeout-ms 5000 2>/dev/null | wc -l); \
 	if [ "$$MSG_COUNT" -lt "120" ]; then echo "$(RED)Fail: Read only $$MSG_COUNT msgs$(NC)"; exit 1; fi; \
 	echo "$(GREEN)   Successfully read $$MSG_COUNT messages.$(NC)"
 	@echo "$(YELLOW)▸ Validating Topic Creation without ZK...$(NC)"
-	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic post-migration-topic --partitions 3 --replication-factor 3
-	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic post-migration-topic
+	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --create --topic post-migration-topic --partitions 3 --replication-factor 3
+	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --describe --topic post-migration-topic
 	@echo "$(GREEN)✓ Migration 100% Successful!$(NC)"
 
 # ── Phase 2 ───────────────────────────────────────────────────
@@ -294,7 +294,7 @@ phase3: download-v4
 	@sleep 6
 	
 	@echo "$(YELLOW)▸ Triggering V4 metadata structural upgrade...$(NC)"
-	@$(KAFKA_BIN_V4)/kafka-features.sh --bootstrap-server localhost:9092 upgrade --metadata 4.2
+	@$(KAFKA_BIN_V4)/kafka-features.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 upgrade --metadata 4.2
 	@echo "$(GREEN)✓ Phase 3 complete. Cluster is now 100% Kafka 4.2.0!$(NC)"
 
 # ── Status & Cleanup ──────────────────────────────────────────
