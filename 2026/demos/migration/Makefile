@@ -89,10 +89,10 @@ phase0: download setup-dirs
 	@KAFKA_HEAP_OPTS="-Xmx2G -Xms2G" $(KAFKA_BIN)/zookeeper-server-start.sh $(CONFIG_DIR)/zk3.properties > $(LOGS_DIR)/zk3.log 2>&1 & echo $$! > $(PIDS_DIR)/zk3.pid
 	@sleep 5
 	
-	@echo "$(YELLOW)▸ Starting Kafka Brokers (ZK Mode)...$(NC)"
-	@$(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase0/broker1.properties > $(LOGS_DIR)/broker1.log 2>&1 & echo $$! > $(PIDS_DIR)/broker1.pid
-	@$(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase0/broker2.properties > $(LOGS_DIR)/broker2.log 2>&1 & echo $$! > $(PIDS_DIR)/broker2.pid
-	@$(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase0/broker3.properties > $(LOGS_DIR)/broker3.log 2>&1 & echo $$! > $(PIDS_DIR)/broker3.pid
+	@echo "$(YELLOW)▸ Starting Kafka Brokers (ZK Mode, 4GB Heap)...$(NC)"
+	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase0/broker1.properties > $(LOGS_DIR)/broker1.log 2>&1 & echo $$! > $(PIDS_DIR)/broker1.pid
+	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase0/broker2.properties > $(LOGS_DIR)/broker2.log 2>&1 & echo $$! > $(PIDS_DIR)/broker2.pid
+	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase0/broker3.properties > $(LOGS_DIR)/broker3.log 2>&1 & echo $$! > $(PIDS_DIR)/broker3.pid
 	
 	@echo "$(GREEN)▸ Waiting 15s for brokers to register...$(NC)"
 	@sleep 15
@@ -152,10 +152,10 @@ phase1:
 	@echo "$(YELLOW)▸ Stopping ZK-only Brokers...$(NC)"
 	@kill -9 $$(cat $(PIDS_DIR)/broker1.pid) $$(cat $(PIDS_DIR)/broker2.pid) $$(cat $(PIDS_DIR)/broker3.pid) 2>/dev/null || true
 	
-	@echo "$(YELLOW)▸ Starting Brokers in Bridge Mode...$(NC)"
-	@$(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase1/broker1.properties > $(LOGS_DIR)/broker1.log 2>&1 & echo $$! > $(PIDS_DIR)/broker1.pid
-	@$(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase1/broker2.properties > $(LOGS_DIR)/broker2.log 2>&1 & echo $$! > $(PIDS_DIR)/broker2.pid
-	@$(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase1/broker3.properties > $(LOGS_DIR)/broker3.log 2>&1 & echo $$! > $(PIDS_DIR)/broker3.pid
+	@echo "$(YELLOW)▸ Starting Brokers in Bridge Mode (4GB Heap)...$(NC)"
+	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase1/broker1.properties > $(LOGS_DIR)/broker1.log 2>&1 & echo $$! > $(PIDS_DIR)/broker1.pid
+	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase1/broker2.properties > $(LOGS_DIR)/broker2.log 2>&1 & echo $$! > $(PIDS_DIR)/broker2.pid
+	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase1/broker3.properties > $(LOGS_DIR)/broker3.log 2>&1 & echo $$! > $(PIDS_DIR)/broker3.pid
 	
 	@echo "$(GREEN)▸ Waiting 15s for Bridge registration...$(NC)"
 	@sleep 15
@@ -195,10 +195,10 @@ phase2:
 	@kill -9 $$(cat $(PIDS_DIR)/zk1.pid) $$(cat $(PIDS_DIR)/zk2.pid) $$(cat $(PIDS_DIR)/zk3.pid) 2>/dev/null || true
 	@rm $(PIDS_DIR)/zk*.pid || true
 	
-	@echo "$(YELLOW)▸ Restarting Brokers in pure KRaft Mode...$(NC)"
-	@$(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase2/broker1.properties > $(LOGS_DIR)/broker1.log 2>&1 & echo $$! > $(PIDS_DIR)/broker1.pid
-	@$(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase2/broker2.properties > $(LOGS_DIR)/broker2.log 2>&1 & echo $$! > $(PIDS_DIR)/broker2.pid
-	@$(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase2/broker3.properties > $(LOGS_DIR)/broker3.log 2>&1 & echo $$! > $(PIDS_DIR)/broker3.pid
+	@echo "$(YELLOW)▸ Restarting Brokers in pure KRaft Mode (4GB Heap)...$(NC)"
+	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase2/broker1.properties > $(LOGS_DIR)/broker1.log 2>&1 & echo $$! > $(PIDS_DIR)/broker1.pid
+	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase2/broker2.properties > $(LOGS_DIR)/broker2.log 2>&1 & echo $$! > $(PIDS_DIR)/broker2.pid
+	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase2/broker3.properties > $(LOGS_DIR)/broker3.log 2>&1 & echo $$! > $(PIDS_DIR)/broker3.pid
 	
 	@sleep 10
 	@echo "$(GREEN)✓ Phase 2 complete. ZooKeeper is dead!$(NC)"
