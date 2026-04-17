@@ -21,7 +21,7 @@ RED    :=\033[0;31m
 CYAN   :=\033[0;36m
 NC     :=\033[0m
 
-.PHONY: help download setup-dirs phase0 cluster-id check-version list-topics produce-messages consume-messages phase1 phase2 verify-bridge verify-kraft status kill clean all
+.PHONY: help download setup-dirs phase0 cluster-id check-version list-topics produce-messages consume-messages phase1 phase2 verify-bridge verify-kraft check-pid status kill clean all
 
 help:
 	@echo "$(CYAN)Kafka Binary Migration Demo Targets$(NC)"
@@ -37,6 +37,7 @@ help:
 	@echo "$(YELLOW)verify-bridge$(NC)- Verify topics & produce messages in Bridge Mode"
 	@echo "$(YELLOW)phase2$(NC)         - Finalize KRaft (Irreversible!) - Restart brokers in KRaft mode"
 	@echo "$(YELLOW)verify-kraft$(NC) - Final validation + create new topic"
+	@echo "$(YELLOW)check-pid$(NC)      - Check details of a specific process (usage: make check-pid PID=123)"
 	@echo "$(YELLOW)status$(NC)         - Check running Java PIDs"
 	@echo "$(YELLOW)clean$(NC)          - Kill all PIDs and wipe data/logs"
 	@echo "$(YELLOW)all$(NC)            - Run full automated migration"
@@ -203,6 +204,14 @@ phase2:
 	@echo "$(GREEN)✓ Phase 2 complete. ZooKeeper is dead!$(NC)"
 
 # ── Status & Cleanup ──────────────────────────────────────────
+
+check-pid:
+	@if [ -z "$(PID)" ]; then \
+		echo "$(RED)! You must provide a PID. Usage: make check-pid PID=12345$(NC)"; \
+	else \
+		echo "$(CYAN)━━━ Process Details for PID $(PID) ━━━$(NC)"; \
+		ps -f -p $(PID) || echo "$(RED)✘ No process found actively running with PID $(PID)$(NC)"; \
+	fi
 
 status:
 	@echo "$(CYAN)━━━ Runtime Status ━━━$(NC)"
