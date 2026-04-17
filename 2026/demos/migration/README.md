@@ -145,7 +145,7 @@ This phase establishes the starting point: a healthy ZooKeeper-based Kafka 3.9.2
 ### Step 0.1 — Start the ZooKeeper Cluster
 
 ```bash
-make phase0
+make start
 ```
 
 This starts:
@@ -183,14 +183,6 @@ kafka-dist/bin/... /opt/kafka/bin/kafka-topics.sh \
   --partitions 6 \
   --replication-factor 3
 
-# Produce exactly 100 messages
-kafka-dist/bin/... bash -c '
-  for i in $(seq 1 100); do
-    echo "message-$i"
-  done | /opt/kafka/bin/kafka-console-producer.sh \
-    --bootstrap-server broker-1:29092 \
-    --topic devoxx-topic
-'
 ```
 
 ### Step 0.4 — Verify the Baseline
@@ -215,14 +207,12 @@ Topic: devoxx-topic   PartitionCount: 6       ReplicationFactor: 3
 
 **Critically check:** The `Isr` (In-Sync Replicas) column must equal the `Replicas` column for every partition. If any partition shows fewer ISR members than replicas, **stop here and fix the under-replication before proceeding.**
 
-```bash
-# Verify all 100 messages are consumable
+# Verify cluster data stream works by consuming
 kafka-dist/bin/... /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server broker-1:29092 \
   --topic devoxx-topic \
   --from-beginning \
   --timeout-ms 15000 2>/dev/null | wc -l
-# Expected: 100
 ```
 
 ✅ **Checkpoint:** 3 brokers healthy, topic fully replicated, 100 messages verified.
@@ -371,14 +361,12 @@ Verify:
 - Leader assignment is intact
 - No under-replicated partitions
 
-```bash
-# Verify data integrity — consume the 100 messages
+# Verify data integrity — consume the dynamic messages
 kafka-dist/bin/... /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server broker-1:29092 \
   --topic devoxx-topic \
   --from-beginning \
   --timeout-ms 15000 2>/dev/null | wc -l
-# Expected: 100
 ```
 
 ### Step 1.5 — Test Produce and Consume in Bridge Mode
@@ -401,7 +389,7 @@ kafka-dist/bin/... /opt/kafka/bin/kafka-console-consumer.sh \
   --topic devoxx-topic \
   --from-beginning \
   --timeout-ms 15000 2>/dev/null | wc -l
-# Expected: 120
+
 ```
 
 ### Step 1.6 — How Long to Stay in Bridge Mode
@@ -499,14 +487,12 @@ Verify:
 
 ### Step 3.2 — Verify Data Integrity
 
-```bash
-# Consume all messages from the beginning
+# Consume all messages from the beginning to prove survivability
 kafka-dist/bin/... /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server broker-1:29092 \
   --topic devoxx-topic \
   --from-beginning \
   --timeout-ms 15000 2>/dev/null | wc -l
-# Expected: 120 (100 from Phase 0 + 20 from Bridge Mode)
 ```
 
 ### Step 3.3 — Verify Write Path
@@ -775,7 +761,7 @@ make help
 
 ```bash
 # Step 1 — Start ZK cluster + create topic + produce 100 messages
-make phase0
+make start
 
 # Step 2 — Extract and save the cluster ID from ZooKeeper
 make cluster-id
@@ -813,12 +799,12 @@ make clean
 
 | Target | Phase | Description |
 |---|---|---|
-| `make phase0` | Phase 0 | Start 3 ZK nodes + 3 brokers, create topic, produce 100 messages |
+| `make start` | Phase 0 | Start 3 ZK nodes + 3 brokers, create initial topic scaffolding |
 | `make cluster-id` | Phase 0.5 | Extract `cluster.id` from ZK and save to `.cluster-id` |
 | `make bridge` | Phase 1 | Stop ZK cluster → start Bridge Mode (ZK + 3 KRaft controllers) |
-| `make verify-bridge` | Verify | Check topics, consume 100 messages, produce 20 more |
+| `make verify-bridge` | Verify | Check topics and dynamically consume all messages streamed into array |
 | `make kraft` | Phase 2 | Stop Bridge → start KRaft-only (**irreversible!**) |
-| `make verify-kraft` | Verify | Full validation: topics, data (120 msgs), writes, new topic creation |
+| `make verify-kraft` | Verify | Full validation: topics, dynamic data survival checks, writes, new topic creation |
 | `make status` | Utility | Show running processes |
 | `make clean` | Utility | Tear down all processes + volumes |
 | `make all` | All | Run Phase 0 → Phase 2 end-to-end |
