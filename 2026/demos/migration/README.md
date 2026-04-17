@@ -145,7 +145,7 @@ This phase establishes the starting point: a healthy ZooKeeper-based Kafka 3.9.2
 ### Step 0.1 — Start the ZooKeeper Cluster
 
 ```bash
-docker compose -f docker-compose-zk.yml up -d
+background JVM processes -f docker-compose-zk.yml up -d
 ```
 
 This starts:
@@ -165,7 +165,7 @@ sleep 30
 
 ```bash
 # Check that all 3 brokers have registered with ZooKeeper
-docker exec broker-1 /opt/kafka/bin/kafka-broker-api-versions.sh \
+kafka-dist/bin/... /opt/kafka/bin/kafka-broker-api-versions.sh \
   --bootstrap-server broker-1:29092 2>/dev/null | grep "id:" | wc -l
 # Expected: 3
 ```
@@ -176,7 +176,7 @@ We create a test topic and produce messages to it. This data **must** survive th
 
 ```bash
 # Create a topic with 6 partitions and replication factor 3
-docker exec broker-1 /opt/kafka/bin/kafka-topics.sh \
+kafka-dist/bin/... /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server broker-1:29092 \
   --create \
   --topic migration-test \
@@ -184,7 +184,7 @@ docker exec broker-1 /opt/kafka/bin/kafka-topics.sh \
   --replication-factor 3
 
 # Produce exactly 100 messages
-docker exec broker-1 bash -c '
+kafka-dist/bin/... bash -c '
   for i in $(seq 1 100); do
     echo "message-$i"
   done | /opt/kafka/bin/kafka-console-producer.sh \
@@ -199,7 +199,7 @@ Before moving to the next phase, verify everything is working correctly:
 
 ```bash
 # Verify topic exists and is fully replicated
-docker exec broker-1 /opt/kafka/bin/kafka-topics.sh \
+kafka-dist/bin/... /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server broker-1:29092 \
   --describe \
   --topic migration-test
@@ -217,7 +217,7 @@ Topic: migration-test   PartitionCount: 6       ReplicationFactor: 3
 
 ```bash
 # Verify all 100 messages are consumable
-docker exec broker-1 /opt/kafka/bin/kafka-console-consumer.sh \
+kafka-dist/bin/... /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server broker-1:29092 \
   --topic migration-test \
   --from-beginning \
@@ -262,14 +262,14 @@ export CLUSTER_ID="MkU3OEVBNTcwNTJENDM2Qg"  # Replace with YOUR value
 echo "$CLUSTER_ID" > .cluster-id
 ```
 
-The `.cluster-id` file is used by our Docker Compose files (via the `${CLUSTER_ID}` environment variable).
+The `.cluster-id` file is used by our Native Binaries files (via the `${CLUSTER_ID}` environment variable).
 
 ### Step 0.5.3 — Verify the Cluster ID
 
 Double-check by reading it from a broker's `meta.properties` file:
 
 ```bash
-docker exec broker-1 cat /var/kafka/data/meta.properties
+kafka-dist/bin/... cat /var/kafka/data/meta.properties
 ```
 
 You should see:
@@ -328,10 +328,10 @@ This is crucial and must be planned before you start:
 ### Step 1.1 — Stop the ZK-Only Cluster
 
 ```bash
-docker compose -f docker-compose-zk.yml down
+background JVM processes -f docker-compose-zk.yml down
 ```
 
-> **Note:** In a real production environment, you would NOT stop the entire cluster. Instead, you would perform a **rolling restart**: add the new configuration properties to each broker one at a time, restart it, verify it rejoins the cluster, then move to the next broker. The Docker Compose approach here stops and restarts everything at once for demo simplicity.
+> **Note:** In a real production environment, you would NOT stop the entire cluster. Instead, you would perform a **rolling restart**: add the new configuration properties to each broker one at a time, restart it, verify it rejoins the cluster, then move to the next broker. The Native Binaries approach here stops and restarts everything at once for demo simplicity.
 
 ### Step 1.2 — Start Bridge Mode
 
@@ -340,7 +340,7 @@ docker compose -f docker-compose-zk.yml down
 export CLUSTER_ID=$(cat .cluster-id)
 
 # Start the bridge mode cluster
-docker compose -f docker-compose-bridge.yml up -d
+background JVM processes -f docker-compose-bridge.yml up -d
 ```
 
 This starts:
@@ -365,7 +365,7 @@ sleep 45
 
 ```bash
 # Check that brokers are registered and topics exist
-docker exec broker-1 /opt/kafka/bin/kafka-topics.sh \
+kafka-dist/bin/... /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server broker-1:29092 \
   --describe --topic migration-test
 ```
@@ -377,7 +377,7 @@ Verify:
 
 ```bash
 # Verify data integrity — consume the 100 messages
-docker exec broker-1 /opt/kafka/bin/kafka-console-consumer.sh \
+kafka-dist/bin/... /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server broker-1:29092 \
   --topic migration-test \
   --from-beginning \
@@ -391,7 +391,7 @@ It is essential to verify that the cluster is fully operational in bridge mode b
 
 ```bash
 # Produce new messages while in bridge mode
-docker exec broker-1 bash -c '
+kafka-dist/bin/... bash -c '
   for i in $(seq 101 120); do
     echo "bridge-mode-message-$i"
   done | /opt/kafka/bin/kafka-console-producer.sh \
@@ -400,7 +400,7 @@ docker exec broker-1 bash -c '
 '
 
 # Consume all messages (should now be 120)
-docker exec broker-1 /opt/kafka/bin/kafka-console-consumer.sh \
+kafka-dist/bin/... /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server broker-1:29092 \
   --topic migration-test \
   --from-beginning \
@@ -453,11 +453,11 @@ Before finalizing, run through this checklist:
 
 ```bash
 # Stop the bridge mode cluster
-docker compose -f docker-compose-bridge.yml down
+background JVM processes -f docker-compose-bridge.yml down
 
 # Start KRaft-only cluster (no ZooKeeper services at all)
 export CLUSTER_ID=$(cat .cluster-id)
-docker compose -f docker-compose-kraft.yml up -d
+background JVM processes -f docker-compose-kraft.yml up -d
 
 # Wait for stabilization
 sleep 30
@@ -468,7 +468,7 @@ sleep 30
 ### Step 2.3 — Verify ZooKeeper is Gone
 
 ```bash
-# Confirm no ZooKeeper containers are running
+# Confirm no ZooKeeper processes are running
 docker ps --filter "name=zookeeper" --format "{{.Names}}"
 # Expected: (empty output)
 
@@ -476,7 +476,7 @@ docker ps --filter "name=zookeeper" --format "{{.Names}}"
 docker ps --format "table {{.Names}}\t{{.Status}}"
 ```
 
-You should see exactly 6 containers: 3 controllers and 3 brokers.
+You should see exactly 6 processes: 3 controllers and 3 brokers.
 
 ---
 
@@ -488,12 +488,12 @@ This is the most important phase after finalization. You must thoroughly verify 
 
 ```bash
 # List all topics
-docker exec broker-1 /opt/kafka/bin/kafka-topics.sh \
+kafka-dist/bin/... /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server broker-1:29092 \
   --list
 
 # Describe the test topic in detail
-docker exec broker-1 /opt/kafka/bin/kafka-topics.sh \
+kafka-dist/bin/... /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server broker-1:29092 \
   --describe --topic migration-test
 ```
@@ -509,7 +509,7 @@ Verify:
 
 ```bash
 # Consume all messages from the beginning
-docker exec broker-1 /opt/kafka/bin/kafka-console-consumer.sh \
+kafka-dist/bin/... /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server broker-1:29092 \
   --topic migration-test \
   --from-beginning \
@@ -521,7 +521,7 @@ docker exec broker-1 /opt/kafka/bin/kafka-console-consumer.sh \
 
 ```bash
 # Produce new messages post-migration
-docker exec broker-1 bash -c '
+kafka-dist/bin/... bash -c '
   for i in $(seq 121 130); do
     echo "post-kraft-message-$i"
   done | /opt/kafka/bin/kafka-console-producer.sh \
@@ -534,7 +534,7 @@ docker exec broker-1 bash -c '
 
 ```bash
 # Create a new topic (tests the metadata write path through KRaft)
-docker exec broker-1 /opt/kafka/bin/kafka-topics.sh \
+kafka-dist/bin/... /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server broker-1:29092 \
   --create \
   --topic post-migration-topic \
@@ -542,12 +542,12 @@ docker exec broker-1 /opt/kafka/bin/kafka-topics.sh \
   --replication-factor 3
 
 # Verify it was created
-docker exec broker-1 /opt/kafka/bin/kafka-topics.sh \
+kafka-dist/bin/... /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server broker-1:29092 \
   --describe --topic post-migration-topic
 
 # Clean up
-docker exec broker-1 /opt/kafka/bin/kafka-topics.sh \
+kafka-dist/bin/... /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server broker-1:29092 \
   --delete --topic post-migration-topic
 ```
@@ -556,7 +556,7 @@ docker exec broker-1 /opt/kafka/bin/kafka-topics.sh \
 
 ```bash
 # List consumer groups
-docker exec broker-1 /opt/kafka/bin/kafka-consumer-groups.sh \
+kafka-dist/bin/... /opt/kafka/bin/kafka-consumer-groups.sh \
   --bootstrap-server broker-1:29092 \
   --list
 ```
@@ -833,8 +833,8 @@ make clean
 | `make verify-bridge` | Verify | Check topics, consume 100 messages, produce 20 more |
 | `make phase2` | Phase 2 | Stop Bridge → start KRaft-only (**irreversible!**) |
 | `make verify-kraft` | Verify | Full validation: topics, data (120 msgs), writes, new topic creation |
-| `make status` | Utility | Show running containers |
-| `make clean` | Utility | Tear down all containers + volumes |
+| `make status` | Utility | Show running processes |
+| `make clean` | Utility | Tear down all processes + volumes |
 | `make all` | All | Run Phase 0 → Phase 2 end-to-end |
 
 ### Using the Shell Script (Alternative)
@@ -864,7 +864,7 @@ demos/migration/
 ├── docker-compose-bridge.yml   # Phase 1: Bridge mode (ZK + KRaft dual-write)
 ├── docker-compose-kraft.yml    # Phase 2: KRaft-only (no ZooKeeper)
 ├── migrate.sh                  # Interactive migration demo script
-├── cleanup.sh                  # Tear down all containers and volumes
+├── cleanup.sh                  # Tear down all processes and volumes
 └── .cluster-id                 # Created at runtime — holds the cluster ID
 ```
 
