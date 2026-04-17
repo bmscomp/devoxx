@@ -9,6 +9,12 @@ KAFKA_URL     := https://archive.apache.org/dist/kafka/$(KAFKA_VERSION)/$(KAFKA_
 KAFKA_DIR     := kafka-dist
 KAFKA_BIN     := $(KAFKA_DIR)/bin
 
+KAFKA_VERSION_V4 := 4.2.0
+KAFKA_ARCHIVE_V4 := kafka_$(SCALA_VERSION)-$(KAFKA_VERSION_V4).tgz
+KAFKA_URL_V4     := https://archive.apache.org/dist/kafka/$(KAFKA_VERSION_V4)/$(KAFKA_ARCHIVE_V4)
+KAFKA_DIR_V4     := kafka-dist-v4
+KAFKA_BIN_V4     := $(KAFKA_DIR_V4)/bin
+
 CONFIG_DIR    := config
 DATA_DIR      := data
 LOGS_DIR      := logs
@@ -21,7 +27,7 @@ RED    :=\033[0;31m
 CYAN   :=\033[0;36m
 NC     :=\033[0m
 
-.PHONY: help download setup-dirs phase0 cluster-id check-version list-topics produce-messages consume-messages phase0.5 phase1 phase2 verify-bridge verify-kraft check-pid status kill clean all
+.PHONY: help download download-v4 setup-dirs phase0 cluster-id check-version list-topics produce-messages consume-messages phase0.5 phase1 phase2 verify-bridge verify-kraft phase3 check-pid status kill clean all
 
 help:
 	@echo "$(CYAN)Kafka Binary Migration Demo Targets$(NC)"
@@ -38,6 +44,7 @@ help:
 	@echo "$(YELLOW)verify-bridge$(NC)- Verify topics & produce messages in Bridge Mode"
 	@echo "$(YELLOW)phase2$(NC)         - Finalize KRaft (Irreversible!) - Restart brokers in KRaft mode"
 	@echo "$(YELLOW)verify-kraft$(NC) - Final validation + create new topic"
+	@echo "$(YELLOW)phase3$(NC)         - Rolling Upgrade to Kafka V4 (Phase 3)"
 	@echo "$(YELLOW)check-pid$(NC)      - Check details of a specific process (usage: make check-pid PID=123)"
 	@echo "$(YELLOW)status$(NC)         - Check running Java PIDs"
 	@echo "$(YELLOW)clean$(NC)          - Kill all PIDs and wipe data/logs"
@@ -55,6 +62,18 @@ download:
 		echo "$(GREEN)✓ Download complete.$(NC)"; \
 	else \
 		echo "$(GREEN)✓ Kafka $(KAFKA_VERSION) already downloaded.$(NC)"; \
+	fi
+
+download-v4:
+	@if [ ! -d "$(KAFKA_DIR_V4)" ]; then \
+		echo "$(CYAN)▸ Downloading Kafka V4 $(KAFKA_VERSION_V4)...$(NC)"; \
+		curl -O $(KAFKA_URL_V4) >/dev/null 2>&1; \
+		tar -xzf $(KAFKA_ARCHIVE_V4); \
+		mv kafka_$(SCALA_VERSION)-$(KAFKA_VERSION_V4) $(KAFKA_DIR_V4); \
+		rm $(KAFKA_ARCHIVE_V4); \
+		echo "$(GREEN)✓ V4 Download complete.$(NC)"; \
+	else \
+		echo "$(GREEN)✓ Kafka V4 $(KAFKA_VERSION_V4) already downloaded.$(NC)"; \
 	fi
 
 setup-dirs:
@@ -233,6 +252,51 @@ phase2:
 	
 	@echo "$(GREEN)✓ Phase 2 complete. ZooKeeper is dead!$(NC)"
 
+# ── Phase 3 ───────────────────────────────────────────────────
+
+phase3: download-v4
+	@echo "\n$(CYAN)━━━ PHASE 3 — Kafka 4.2.0 Rolling Upgrade ━━━$(NC)"
+	
+	@echo "$(YELLOW)▸ Rolling Upgrade: Controller 1 to V4...$(NC)"
+	@kill -15 $$(cat $(PIDS_DIR)/controller1.pid) 2>/dev/null || true
+	@sleep 6
+	@KAFKA_HEAP_OPTS="-Xmx1G -Xms1G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/controller1.properties > $(LOGS_DIR)/controller1.log 2>&1 & echo $$! > $(PIDS_DIR)/controller1.pid
+	@sleep 6
+
+	@echo "$(YELLOW)▸ Rolling Upgrade: Controller 2 to V4...$(NC)"
+	@kill -15 $$(cat $(PIDS_DIR)/controller2.pid) 2>/dev/null || true
+	@sleep 6
+	@KAFKA_HEAP_OPTS="-Xmx1G -Xms1G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/controller2.properties > $(LOGS_DIR)/controller2.log 2>&1 & echo $$! > $(PIDS_DIR)/controller2.pid
+	@sleep 6
+
+	@echo "$(YELLOW)▸ Rolling Upgrade: Controller 3 to V4...$(NC)"
+	@kill -15 $$(cat $(PIDS_DIR)/controller3.pid) 2>/dev/null || true
+	@sleep 6
+	@KAFKA_HEAP_OPTS="-Xmx1G -Xms1G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/controller3.properties > $(LOGS_DIR)/controller3.log 2>&1 & echo $$! > $(PIDS_DIR)/controller3.pid
+	@sleep 6
+
+	@echo "$(YELLOW)▸ Rolling Upgrade: Broker 1 to V4...$(NC)"
+	@kill -15 $$(cat $(PIDS_DIR)/broker1.pid) 2>/dev/null || true
+	@sleep 6
+	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/broker1.properties > $(LOGS_DIR)/broker1.log 2>&1 & echo $$! > $(PIDS_DIR)/broker1.pid
+	@sleep 6
+
+	@echo "$(YELLOW)▸ Rolling Upgrade: Broker 2 to V4...$(NC)"
+	@kill -15 $$(cat $(PIDS_DIR)/broker2.pid) 2>/dev/null || true
+	@sleep 6
+	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/broker2.properties > $(LOGS_DIR)/broker2.log 2>&1 & echo $$! > $(PIDS_DIR)/broker2.pid
+	@sleep 6
+
+	@echo "$(YELLOW)▸ Rolling Upgrade: Broker 3 to V4...$(NC)"
+	@kill -15 $$(cat $(PIDS_DIR)/broker3.pid) 2>/dev/null || true
+	@sleep 6
+	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/broker3.properties > $(LOGS_DIR)/broker3.log 2>&1 & echo $$! > $(PIDS_DIR)/broker3.pid
+	@sleep 6
+	
+	@echo "$(YELLOW)▸ Triggering V4 metadata structural upgrade...$(NC)"
+	@$(KAFKA_BIN_V4)/kafka-features.sh --bootstrap-server localhost:9092 upgrade --metadata 4.2
+	@echo "$(GREEN)✓ Phase 3 complete. Cluster is now 100% Kafka 4.2.0!$(NC)"
+
 # ── Status & Cleanup ──────────────────────────────────────────
 
 check-pid:
@@ -262,4 +326,4 @@ clean: kill
 	@rm -rf $(DATA_DIR)/* $(LOGS_DIR)/* $(PIDS_DIR)/* .cluster-id
 	@echo "$(GREEN)✓ Clean complete.$(NC)"
 
-all: phase0 cluster-id phase0.5 phase1 verify-bridge phase2 verify-kraft
+all: phase0 cluster-id phase0.5 phase1 verify-bridge phase2 verify-kraft phase3
