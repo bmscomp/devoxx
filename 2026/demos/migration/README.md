@@ -760,23 +760,31 @@ make help
 **Step-by-step (recommended for demos):**
 
 ```bash
-# Step 1 — Start ZK cluster + create topic + produce 100 messages
+# Step 1 — Start ZK cluster + create initial topic scaffolding
 make start
 
 # Step 2 — Extract and save the cluster ID from ZooKeeper
 make cluster-id
 
-# Step 3 — Stop ZK cluster, start Bridge Mode (ZK + KRaft dual-write)
+# Step 3 — Format and Initialize the KRaft Controller Quorum
+make controllers
+
+# Step 4 — Roll brokers into Bridge Mode (ZK + KRaft dual-write)
 make bridge
 
-# Step 4 — Verify data integrity in Bridge Mode
+# Step 5 — Verify data integrity and quorum health in Bridge Mode
+make verify-zookeeper
+make verify-controllers
 make verify-bridge
 
-# Step 5 — Finalize: KRaft only, no ZooKeeper (⚠ irreversible!)
+# Step 6 — Finalize: KRaft only, no ZooKeeper (⚠ irreversible!)
 make kraft
 
-# Step 6 — Validate everything post-migration
+# Step 7 — Validate everything post-migration
 make verify-kraft
+
+# Step 8 — Upgrade: Execute rolling binary upgrade to Kafka 4.2.0 natively
+make upgrade
 
 # Check what's running at any point
 make status
@@ -788,7 +796,7 @@ make clean
 **Full end-to-end (non-interactive):**
 
 ```bash
-# Run the entire migration in one command
+# Run the entire migration from Phase 0 up to Phase 3
 make all
 
 # Clean up
@@ -801,13 +809,17 @@ make clean
 |---|---|---|
 | `make start` | Phase 0 | Start 3 ZK nodes + 3 brokers, create initial topic scaffolding |
 | `make cluster-id` | Phase 0.5 | Extract `cluster.id` from ZK and save to `.cluster-id` |
-| `make bridge` | Phase 1 | Stop ZK cluster → start Bridge Mode (ZK + 3 KRaft controllers) |
+| `make controllers` | Phase 0.5 | Format and start KRaft Controllers cleanly before bridging |
+| `make bridge` | Phase 1 | Roll brokers into Bridge Mode (ZK + 3 KRaft controllers) |
+| `make verify-zookeeper` | Verify | Poll Zookeeper znodes to prove topological health |
+| `make verify-controllers` | Verify | Interrogate KRaft quorum to prove meta-data election |
 | `make verify-bridge` | Verify | Check topics and dynamically consume all messages streamed into array |
 | `make kraft` | Phase 2 | Stop Bridge → start KRaft-only (**irreversible!**) |
 | `make verify-kraft` | Verify | Full validation: topics, dynamic data survival checks, writes, new topic creation |
+| `make upgrade` | Phase 3 | Sequentially upgrade binaries to Kafka 4.x and trigger definitive metadata schema jump |
 | `make status` | Utility | Show running processes |
 | `make clean` | Utility | Tear down all processes + volumes |
-| `make all` | All | Run Phase 0 → Phase 2 end-to-end |
+| `make all` | All | Run Phase 0 → Phase 3 end-to-end |
 
 ### Using the Shell Script (Alternative)
 
