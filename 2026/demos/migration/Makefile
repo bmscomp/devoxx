@@ -21,7 +21,7 @@ RED    :=\033[0;31m
 CYAN   :=\033[0;36m
 NC     :=\033[0m
 
-.PHONY: help download setup-dirs phase0 cluster-id list-topics produce-messages consume-messages phase1 phase2 verify-bridge verify-kraft status kill clean all
+.PHONY: help download setup-dirs phase0 cluster-id check-version list-topics produce-messages consume-messages phase1 phase2 verify-bridge verify-kraft status kill clean all
 
 help:
 	@echo "$(CYAN)Kafka Binary Migration Demo Targets$(NC)"
@@ -29,6 +29,7 @@ help:
 	@echo "$(YELLOW)download$(NC)       - Download Kafka $(KAFKA_VERSION) tarball"
 	@echo "$(YELLOW)phase0$(NC)         - Start ZK Ensemble + Kafka Brokers (ZK Mode)"
 	@echo "$(YELLOW)cluster-id$(NC)     - Extract cluster ID via zookeeper-shell string parsing"
+	@echo "$(YELLOW)check-version$(NC)    - Print the downloaded Kafka binary version"
 	@echo "$(YELLOW)list-topics$(NC)    - List all current topics in the cluster"
 	@echo "$(YELLOW)produce-messages$(NC)- Open an interactive console producer"
 	@echo "$(YELLOW)consume-messages$(NC)- Consume all messages from 'migration-test'"
@@ -112,6 +113,10 @@ cluster-id:
 	echo "$(GREEN)✓ Captured existing Cluster ID: $$CLUSTER_ID$(NC)"; \
 
 # ── Utilities ─────────────────────────────────────────────────
+
+check-version:
+	@echo "\n$(CYAN)━━━ Kafka Version ━━━$(NC)"
+	@$(KAFKA_BIN)/kafka-topics.sh --version
 
 list-topics:
 	@echo "\n$(CYAN)━━━ Listing All Topics ━━━$(NC)"
