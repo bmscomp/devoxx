@@ -179,7 +179,7 @@ We create a test topic and produce messages to it. This data **must** survive th
 kafka-dist/bin/... /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server broker-1:29092 \
   --create \
-  --topic migration-test \
+  --topic devoxx-topic \
   --partitions 6 \
   --replication-factor 3
 
@@ -189,7 +189,7 @@ kafka-dist/bin/... bash -c '
     echo "message-$i"
   done | /opt/kafka/bin/kafka-console-producer.sh \
     --bootstrap-server broker-1:29092 \
-    --topic migration-test
+    --topic devoxx-topic
 '
 ```
 
@@ -202,12 +202,12 @@ Before moving to the next phase, verify everything is working correctly:
 kafka-dist/bin/... /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server broker-1:29092 \
   --describe \
-  --topic migration-test
+  --topic devoxx-topic
 ```
 
 You should see output like:
 ```
-Topic: migration-test   PartitionCount: 6       ReplicationFactor: 3
+Topic: devoxx-topic   PartitionCount: 6       ReplicationFactor: 3
   Partition: 0  Leader: 1  Replicas: 1,2,3  Isr: 1,2,3
   Partition: 1  Leader: 2  Replicas: 2,3,1  Isr: 2,3,1
   ...
@@ -219,7 +219,7 @@ Topic: migration-test   PartitionCount: 6       ReplicationFactor: 3
 # Verify all 100 messages are consumable
 kafka-dist/bin/... /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server broker-1:29092 \
-  --topic migration-test \
+  --topic devoxx-topic \
   --from-beginning \
   --timeout-ms 15000 2>/dev/null | wc -l
 # Expected: 100
@@ -363,7 +363,7 @@ sleep 45
 # Check that brokers are registered and topics exist
 kafka-dist/bin/... /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server broker-1:29092 \
-  --describe --topic migration-test
+  --describe --topic devoxx-topic
 ```
 
 Verify:
@@ -375,7 +375,7 @@ Verify:
 # Verify data integrity — consume the 100 messages
 kafka-dist/bin/... /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server broker-1:29092 \
-  --topic migration-test \
+  --topic devoxx-topic \
   --from-beginning \
   --timeout-ms 15000 2>/dev/null | wc -l
 # Expected: 100
@@ -392,13 +392,13 @@ kafka-dist/bin/... bash -c '
     echo "bridge-mode-message-$i"
   done | /opt/kafka/bin/kafka-console-producer.sh \
     --bootstrap-server broker-1:29092 \
-    --topic migration-test
+    --topic devoxx-topic
 '
 
 # Consume all messages (should now be 120)
 kafka-dist/bin/... /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server broker-1:29092 \
-  --topic migration-test \
+  --topic devoxx-topic \
   --from-beginning \
   --timeout-ms 15000 2>/dev/null | wc -l
 # Expected: 120
@@ -487,7 +487,7 @@ kafka-dist/bin/... /opt/kafka/bin/kafka-topics.sh \
 # Describe the test topic in detail
 kafka-dist/bin/... /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server broker-1:29092 \
-  --describe --topic migration-test
+  --describe --topic devoxx-topic
 ```
 
 Verify:
@@ -503,7 +503,7 @@ Verify:
 # Consume all messages from the beginning
 kafka-dist/bin/... /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server broker-1:29092 \
-  --topic migration-test \
+  --topic devoxx-topic \
   --from-beginning \
   --timeout-ms 15000 2>/dev/null | wc -l
 # Expected: 120 (100 from Phase 0 + 20 from Bridge Mode)
@@ -518,7 +518,7 @@ kafka-dist/bin/... bash -c '
     echo "post-kraft-message-$i"
   done | /opt/kafka/bin/kafka-console-producer.sh \
     --bootstrap-server broker-1:29092 \
-    --topic migration-test
+    --topic devoxx-topic
 '
 ```
 

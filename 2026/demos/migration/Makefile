@@ -38,7 +38,7 @@ help:
 	@echo "$(YELLOW)check-version$(NC)    - Print the downloaded Kafka binary version"
 	@echo "$(YELLOW)list-topics$(NC)    - List all current topics in the cluster"
 	@echo "$(YELLOW)produce-messages$(NC)- Open an interactive console producer"
-	@echo "$(YELLOW)consume-messages$(NC)- Consume all messages from 'migration-test'"
+	@echo "$(YELLOW)consume-messages$(NC)- Consume all messages from 'devoxx-topic'"
 	@echo "$(YELLOW)phase0.5$(NC)       - Format and start KRaft Controllers cleanly before bridging"
 	@echo "$(YELLOW)phase1$(NC)         - Rolling Restart of Brokers into Bridge Mode"
 	@echo "$(YELLOW)verify-bridge$(NC)- Verify topics & produce messages in Bridge Mode"
@@ -122,8 +122,8 @@ cluster: download setup-dirs
 	@sleep 15
 	
 	@echo "$(YELLOW)▸ Creating test topic & producing messages...$(NC)"
-	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --create --topic migration-test --partitions 6 --replication-factor 3
-	@seq 1 100 | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic migration-test
+	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --create --topic devoxx-topic --partitions 6 --replication-factor 3
+	@seq 1 100 | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic devoxx-topic
 	@echo "$(GREEN)✓ Phase 0 complete.$(NC)"
 
 # ── Extract Cluster ID ────────────────────────────────────────
@@ -151,18 +151,18 @@ list-topics:
 	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --list
 
 produce-messages:
-	@echo "\n$(CYAN)━━━ Auto-Publishing to 'migration-test' ━━━$(NC)"
+	@echo "\n$(CYAN)━━━ Auto-Publishing to 'devoxx-topic' ━━━$(NC)"
 	@echo "$(YELLOW)Sending an incremented message every 0.6 seconds. Press Ctrl+C to stop.$(NC)"
 	@python3 -u -c 'import time, datetime; i=1; \
 	while True: \
 		ts=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]; \
 		print(f"devoxx-{i}-{ts}", flush=True); \
 		i+=1; \
-		time.sleep(0.6)' | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic migration-test
+		time.sleep(0.6)' | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic devoxx-topic
 
 consume-messages:
-	@echo "\n$(CYAN)━━━ Reading from 'migration-test' ━━━$(NC)"
-	@$(KAFKA_BIN)/kafka-console-consumer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic migration-test --from-beginning
+	@echo "\n$(CYAN)━━━ Reading from 'devoxx-topic' ━━━$(NC)"
+	@$(KAFKA_BIN)/kafka-console-consumer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic devoxx-topic --from-beginning
 
 # ── Phase 0.5 ─────────────────────────────────────────────────
 
@@ -214,16 +214,16 @@ verify-bridge:
 	@echo "$(CYAN)━━━ VERIFY: Bridge Mode ━━━$(NC)"
 	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --describe
 	@echo "\n$(YELLOW)▸ Reading 100 messages to prove read path...$(NC)"
-	@MSG_COUNT=$$($(KAFKA_BIN)/kafka-console-consumer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic migration-test --from-beginning --timeout-ms 5000 2>/dev/null | wc -l); \
+	@MSG_COUNT=$$($(KAFKA_BIN)/kafka-console-consumer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic devoxx-topic --from-beginning --timeout-ms 5000 2>/dev/null | wc -l); \
 	echo "$(GREEN)   Read $$MSG_COUNT messages.$(NC)"
 	@echo "$(YELLOW)▸ Writing 20 NEW messages to prove write path...$(NC)"
-	@seq 101 120 | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic migration-test
+	@seq 101 120 | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic devoxx-topic
 	@echo "$(GREEN)✓ Bridge verification complete.$(NC)"
 
 verify-kraft:
 	@echo "$(CYAN)━━━ VERIFY: KRaft Mode ━━━$(NC)"
 	@echo "$(YELLOW)▸ Reading total 120 messages...$(NC)"
-	@MSG_COUNT=$$($(KAFKA_BIN)/kafka-console-consumer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic migration-test --from-beginning --timeout-ms 5000 2>/dev/null | wc -l); \
+	@MSG_COUNT=$$($(KAFKA_BIN)/kafka-console-consumer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic devoxx-topic --from-beginning --timeout-ms 5000 2>/dev/null | wc -l); \
 	if [ "$$MSG_COUNT" -lt "120" ]; then echo "$(RED)Fail: Read only $$MSG_COUNT msgs$(NC)"; exit 1; fi; \
 	echo "$(GREEN)   Successfully read $$MSG_COUNT messages.$(NC)"
 	@echo "$(YELLOW)▸ Validating Topic Creation without ZK...$(NC)"
