@@ -27,13 +27,13 @@ RED    :=\033[0;31m
 CYAN   :=\033[0;36m
 NC     :=\033[0m
 
-.PHONY: help download download-v4 setup-dirs cluster cluster-id check-version list-topics produce-messages consume-messages controllers phase1 phase2 verify-bridge verify-kraft phase3 check-pid status kill clean all
+.PHONY: help download download-v4 setup-dirs start cluster-id check-version list-topics produce-messages consume-messages controllers phase1 phase2 verify-bridge verify-kraft phase3 check-pid status kill clean all
 
 help:
 	@echo "$(CYAN)Kafka Binary Migration Demo Targets$(NC)"
 	@echo "-----------------------------------"
 	@echo "$(YELLOW)download$(NC)       - Download Kafka $(KAFKA_VERSION) tarball"
-	@echo "$(YELLOW)cluster$(NC)        - Start ZK Ensemble + Kafka Brokers (ZK Mode)"
+	@echo "$(YELLOW)start$(NC)          - Start ZK Ensemble + Kafka Brokers (ZK Mode)"
 	@echo "$(YELLOW)cluster-id$(NC)     - Extract cluster ID via zookeeper-shell string parsing"
 	@echo "$(YELLOW)check-version$(NC)    - Print the downloaded Kafka binary version"
 	@echo "$(YELLOW)list-topics$(NC)    - List all current topics in the cluster"
@@ -104,7 +104,7 @@ kill:
 
 # ── Phase 0 ───────────────────────────────────────────────────
 
-cluster: download setup-dirs
+start: download setup-dirs
 	@echo "\n$(CYAN)━━━ PHASE 0 — ZooKeeper Mode ━━━$(NC)"
 	
 	@echo "$(YELLOW)▸ Starting ZooKeepers (2GB Heap)...$(NC)"
@@ -334,4 +334,4 @@ clean: kill
 	@rm -rf $(DATA_DIR)/* $(LOGS_DIR)/* $(PIDS_DIR)/* .cluster-id
 	@echo "$(GREEN)✓ Clean complete.$(NC)"
 
-all: cluster cluster-id controllers phase1 verify-bridge phase2 verify-kraft phase3
+all: start cluster-id controllers phase1 verify-bridge phase2 verify-kraft phase3
