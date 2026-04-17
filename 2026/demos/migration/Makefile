@@ -153,12 +153,7 @@ list-topics:
 produce-messages:
 	@echo "\n$(CYAN)━━━ Auto-Publishing to 'devoxx-topic' ━━━$(NC)"
 	@echo "$(YELLOW)Sending an incremented message every 0.6 seconds. Press Ctrl+C to stop.$(NC)"
-	@python3 -u -c 'import time, datetime; i=1; \
-	while True: \
-		ts=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]; \
-		print(f"devoxx-{i}-{ts}", flush=True); \
-		i+=1; \
-		time.sleep(0.6)' | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic devoxx-topic
+	@python3 -u -c 'exec("import time, datetime\ni=1\nwhile True:\n    ts=datetime.datetime.now().strftime(\"%Y-%m-%d %H:%M:%S.%f\")[:-3]\n    print(f\"devoxx-{i}-{ts}\", flush=True)\n    i+=1\n    time.sleep(0.6)")' | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic devoxx-topic
 
 consume-messages:
 	@echo "\n$(CYAN)━━━ Reading from 'devoxx-topic' ━━━$(NC)"
