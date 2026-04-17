@@ -23,7 +23,7 @@ COMPOSE_ZK     := docker compose -f docker-compose-zk.yml
 COMPOSE_BRIDGE := docker compose -f docker-compose-bridge.yml
 COMPOSE_KRAFT  := docker compose -f docker-compose-kraft.yml
 BROKER_EXEC    := docker exec broker-1
-KAFKA_BIN      := /opt/kafka/bin
+KAFKA_BIN      := /bin
 BOOTSTRAP      := broker-1:29092
 TOPIC          := migration-test
 
@@ -83,7 +83,7 @@ phase0:
 	@sleep 30
 	@echo ""
 	@echo -e "$(BLUE)▸ Creating test topic: $(TOPIC) (6 partitions, RF=3)...$(NC)"
-	$(BROKER_EXEC) $(KAFKA_BIN)/kafka-topics.sh \
+	$(BROKER_EXEC) $(KAFKA_BIN)/kafka-topics \
 		--bootstrap-server $(BOOTSTRAP) \
 		--create --topic $(TOPIC) \
 		--partitions 6 --replication-factor 3
@@ -91,11 +91,11 @@ phase0:
 	@echo -e "$(BLUE)▸ Producing 100 test messages...$(NC)"
 	$(BROKER_EXEC) bash -c '\
 		for i in $$(seq 1 100); do echo "message-$$i"; done \
-		| $(KAFKA_BIN)/kafka-console-producer.sh \
+		| $(KAFKA_BIN)/kafka-console-producer \
 			--bootstrap-server $(BOOTSTRAP) --topic $(TOPIC)'
 	@echo ""
 	@echo -e "$(BLUE)▸ Verifying topic...$(NC)"
-	$(BROKER_EXEC) $(KAFKA_BIN)/kafka-topics.sh \
+	$(BROKER_EXEC) $(KAFKA_BIN)/kafka-topics \
 		--bootstrap-server $(BOOTSTRAP) --describe --topic $(TOPIC)
 	@echo ""
 	@echo -e "$(GREEN)✓ Phase 0 complete. ZK cluster is running with test data.$(NC)"
@@ -120,7 +120,7 @@ cluster-id:
 		| grep cluster.id | cut -d= -f2); \
 	if [ -z "$$CLUSTER_ID" ]; then \
 		echo -e "$(RED)⚠ Could not extract cluster ID. Generating a new one...$(NC)"; \
-		CLUSTER_ID=$$($(BROKER_EXEC) $(KAFKA_BIN)/kafka-storage.sh random-uuid); \
+		CLUSTER_ID=$$($(BROKER_EXEC) $(KAFKA_BIN)/kafka-storage random-uuid); \
 	fi; \
 	echo "$$CLUSTER_ID" > .cluster-id; \
 	echo ""; \
@@ -175,11 +175,11 @@ verify-bridge:
 	@echo -e "$(CYAN)━━━ VERIFYING BRIDGE MODE ━━━$(NC)"
 	@echo ""
 	@echo -e "$(BLUE)▸ Describing topic...$(NC)"
-	$(BROKER_EXEC) $(KAFKA_BIN)/kafka-topics.sh \
+	$(BROKER_EXEC) $(KAFKA_BIN)/kafka-topics \
 		--bootstrap-server $(BOOTSTRAP) --describe --topic $(TOPIC)
 	@echo ""
 	@echo -e "$(BLUE)▸ Consuming messages (expecting 100)...$(NC)"
-	@MSG_COUNT=$$($(BROKER_EXEC) $(KAFKA_BIN)/kafka-console-consumer.sh \
+	@MSG_COUNT=$$($(BROKER_EXEC) $(KAFKA_BIN)/kafka-console-consumer \
 		--bootstrap-server $(BOOTSTRAP) \
 		--topic $(TOPIC) --from-beginning \
 		--timeout-ms 15000 2>/dev/null | wc -l | tr -d ' '); \
@@ -193,7 +193,7 @@ verify-bridge:
 	@echo -e "$(BLUE)▸ Producing 20 new messages in Bridge Mode...$(NC)"
 	$(BROKER_EXEC) bash -c '\
 		for i in $$(seq 101 120); do echo "bridge-msg-$$i"; done \
-		| $(KAFKA_BIN)/kafka-console-producer.sh \
+		| $(KAFKA_BIN)/kafka-console-producer \
 			--bootstrap-server $(BOOTSTRAP) --topic $(TOPIC)'
 	@echo -e "$(GREEN)✓ Write path verified.$(NC)"
 
@@ -245,15 +245,15 @@ verify-kraft:
 	@echo -e "$(CYAN)━━━ POST-MIGRATION VALIDATION ━━━$(NC)"
 	@echo ""
 	@echo -e "$(BLUE)▸ Listing all topics...$(NC)"
-	$(BROKER_EXEC) $(KAFKA_BIN)/kafka-topics.sh \
+	$(BROKER_EXEC) $(KAFKA_BIN)/kafka-topics \
 		--bootstrap-server $(BOOTSTRAP) --list
 	@echo ""
 	@echo -e "$(BLUE)▸ Describing $(TOPIC)...$(NC)"
-	$(BROKER_EXEC) $(KAFKA_BIN)/kafka-topics.sh \
+	$(BROKER_EXEC) $(KAFKA_BIN)/kafka-topics \
 		--bootstrap-server $(BOOTSTRAP) --describe --topic $(TOPIC)
 	@echo ""
 	@echo -e "$(BLUE)▸ Consuming all messages (expecting 120)...$(NC)"
-	@MSG_COUNT=$$($(BROKER_EXEC) $(KAFKA_BIN)/kafka-console-consumer.sh \
+	@MSG_COUNT=$$($(BROKER_EXEC) $(KAFKA_BIN)/kafka-console-consumer \
 		--bootstrap-server $(BOOTSTRAP) \
 		--topic $(TOPIC) --from-beginning \
 		--timeout-ms 15000 2>/dev/null | wc -l | tr -d ' '); \
@@ -267,16 +267,16 @@ verify-kraft:
 	@echo -e "$(BLUE)▸ Producing 10 new messages post-migration...$(NC)"
 	$(BROKER_EXEC) bash -c '\
 		for i in $$(seq 121 130); do echo "kraft-msg-$$i"; done \
-		| $(KAFKA_BIN)/kafka-console-producer.sh \
+		| $(KAFKA_BIN)/kafka-console-producer \
 			--bootstrap-server $(BOOTSTRAP) --topic $(TOPIC)'
 	@echo -e "$(GREEN)✓ Write path verified on KRaft-only cluster.$(NC)"
 	@echo ""
 	@echo -e "$(BLUE)▸ Creating a new topic to verify metadata write path...$(NC)"
-	$(BROKER_EXEC) $(KAFKA_BIN)/kafka-topics.sh \
+	$(BROKER_EXEC) $(KAFKA_BIN)/kafka-topics \
 		--bootstrap-server $(BOOTSTRAP) \
 		--create --topic post-migration-test \
 		--partitions 3 --replication-factor 3
-	$(BROKER_EXEC) $(KAFKA_BIN)/kafka-topics.sh \
+	$(BROKER_EXEC) $(KAFKA_BIN)/kafka-topics \
 		--bootstrap-server $(BOOTSTRAP) \
 		--describe --topic post-migration-test
 	@echo ""

@@ -74,7 +74,7 @@ services:
   # ── KRaft Controllers (NEW) ────────────────────────────────
 
   controller-1:
-    image: apache/kafka:3.9.2
+    image: confluentinc/cp-kafka:7.8.0
     container_name: controller-1
     hostname: controller-1
     environment:
@@ -84,15 +84,15 @@ services:
       KAFKA_LISTENERS: CONTROLLER://0.0.0.0:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT
-      KAFKA_LOG_DIRS: /var/kafka/metadata
+      KAFKA_LOG_DIRS: /var/lib/kafka/metadata
       KAFKA_CLUSTER_ID: ${CLUSTER_ID}
     volumes:
-      - ctrl1-data:/var/kafka/metadata
+      - ctrl1-data:/var/lib/kafka/metadata
     networks:
       - kafka-net
 
   controller-2:
-    image: apache/kafka:3.9.2
+    image: confluentinc/cp-kafka:7.8.0
     container_name: controller-2
     hostname: controller-2
     environment:
@@ -102,15 +102,15 @@ services:
       KAFKA_LISTENERS: CONTROLLER://0.0.0.0:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT
-      KAFKA_LOG_DIRS: /var/kafka/metadata
+      KAFKA_LOG_DIRS: /var/lib/kafka/metadata
       KAFKA_CLUSTER_ID: ${CLUSTER_ID}
     volumes:
-      - ctrl2-data:/var/kafka/metadata
+      - ctrl2-data:/var/lib/kafka/metadata
     networks:
       - kafka-net
 
   controller-3:
-    image: apache/kafka:3.9.2
+    image: confluentinc/cp-kafka:7.8.0
     container_name: controller-3
     hostname: controller-3
     environment:
@@ -120,17 +120,17 @@ services:
       KAFKA_LISTENERS: CONTROLLER://0.0.0.0:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT
-      KAFKA_LOG_DIRS: /var/kafka/metadata
+      KAFKA_LOG_DIRS: /var/lib/kafka/metadata
       KAFKA_CLUSTER_ID: ${CLUSTER_ID}
     volumes:
-      - ctrl3-data:/var/kafka/metadata
+      - ctrl3-data:/var/lib/kafka/metadata
     networks:
       - kafka-net
 
   # ── Kafka Brokers (migration mode enabled) ─────────────────
 
   broker-1:
-    image: apache/kafka:3.9.2
+    image: confluentinc/cp-kafka:7.8.0
     container_name: broker-1
     hostname: broker-1
     ports:
@@ -138,7 +138,6 @@ services:
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_BROKER_ID: 1
-      KAFKA_PROCESS_ROLES: ""
       # ZooKeeper connection (still required during bridge)
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:2181,zookeeper-2:2181,zookeeper-3:2181
       # KRaft controller quorum (NEW)
@@ -151,14 +150,14 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,INTERNAL://broker-1:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-      KAFKA_LOG_DIRS: /var/kafka/data
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
       KAFKA_NUM_PARTITIONS: 3
       KAFKA_DEFAULT_REPLICATION_FACTOR: 3
       KAFKA_MIN_INSYNC_REPLICAS: 2
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
       KAFKA_INTER_BROKER_PROTOCOL_VERSION: "3.9"
     volumes:
-      - broker1-data:/var/kafka/data
+      - broker1-data:/var/lib/kafka/data
     depends_on:
       - zookeeper-1
       - zookeeper-2
@@ -170,7 +169,7 @@ services:
       - kafka-net
 
   broker-2:
-    image: apache/kafka:3.9.2
+    image: confluentinc/cp-kafka:7.8.0
     container_name: broker-2
     hostname: broker-2
     ports:
@@ -178,7 +177,6 @@ services:
     environment:
       KAFKA_NODE_ID: 2
       KAFKA_BROKER_ID: 2
-      KAFKA_PROCESS_ROLES: ""
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:2181,zookeeper-2:2181,zookeeper-3:2181
       KAFKA_CONTROLLER_QUORUM_VOTERS: 100@controller-1:9093,101@controller-2:9093,102@controller-3:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
@@ -187,14 +185,14 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9093,INTERNAL://broker-2:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-      KAFKA_LOG_DIRS: /var/kafka/data
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
       KAFKA_NUM_PARTITIONS: 3
       KAFKA_DEFAULT_REPLICATION_FACTOR: 3
       KAFKA_MIN_INSYNC_REPLICAS: 2
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
       KAFKA_INTER_BROKER_PROTOCOL_VERSION: "3.9"
     volumes:
-      - broker2-data:/var/kafka/data
+      - broker2-data:/var/lib/kafka/data
     depends_on:
       - zookeeper-1
       - zookeeper-2
@@ -206,7 +204,7 @@ services:
       - kafka-net
 
   broker-3:
-    image: apache/kafka:3.9.2
+    image: confluentinc/cp-kafka:7.8.0
     container_name: broker-3
     hostname: broker-3
     ports:
@@ -214,7 +212,6 @@ services:
     environment:
       KAFKA_NODE_ID: 3
       KAFKA_BROKER_ID: 3
-      KAFKA_PROCESS_ROLES: ""
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:2181,zookeeper-2:2181,zookeeper-3:2181
       KAFKA_CONTROLLER_QUORUM_VOTERS: 100@controller-1:9093,101@controller-2:9093,102@controller-3:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
@@ -223,14 +220,14 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9094,INTERNAL://broker-3:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-      KAFKA_LOG_DIRS: /var/kafka/data
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
       KAFKA_NUM_PARTITIONS: 3
       KAFKA_DEFAULT_REPLICATION_FACTOR: 3
       KAFKA_MIN_INSYNC_REPLICAS: 2
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
       KAFKA_INTER_BROKER_PROTOCOL_VERSION: "3.9"
     volumes:
-      - broker3-data:/var/kafka/data
+      - broker3-data:/var/lib/kafka/data
     depends_on:
       - zookeeper-1
       - zookeeper-2

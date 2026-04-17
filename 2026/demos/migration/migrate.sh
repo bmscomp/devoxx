@@ -55,7 +55,7 @@ info "Verifying cluster is operational..."
 docker exec broker-1 /opt/kafka/bin/kafka-metadata.sh --snapshot /var/kafka/data/__cluster_metadata-0/00000000000000000000.log --cluster-id 2>/dev/null || true
 
 info "Creating a demo topic to verify data survives migration..."
-docker exec broker-1 /opt/kafka/bin/kafka-topics.sh \
+docker exec broker-1 /opt/kafka/bin/kafka-topics \
   --bootstrap-server broker-1:29092 \
   --create \
   --topic migration-test \
@@ -66,14 +66,14 @@ info "Producing 100 test messages..."
 docker exec broker-1 bash -c '
   for i in $(seq 1 100); do
     echo "message-$i"
-  done | /opt/kafka/bin/kafka-console-producer.sh \
+  done | /opt/kafka/bin/kafka-console-producer \
     --bootstrap-server broker-1:29092 \
     --topic migration-test
 '
 
 ok "Phase 0 complete. ZK cluster is running with test data."
 info "Topics:"
-docker exec broker-1 /opt/kafka/bin/kafka-topics.sh \
+docker exec broker-1 /opt/kafka/bin/kafka-topics \
   --bootstrap-server broker-1:29092 \
   --list
 
@@ -94,7 +94,7 @@ CLUSTER_ID=$(docker exec zookeeper-1 bash -c '
 
 if [ -z "$CLUSTER_ID" ]; then
   warn "Could not extract cluster ID automatically. Generating a new one..."
-  CLUSTER_ID=$(docker exec broker-1 /opt/kafka/bin/kafka-storage.sh random-uuid)
+  CLUSTER_ID=$(docker exec broker-1 /opt/kafka/bin/kafka-storage random-uuid)
 fi
 
 export CLUSTER_ID
@@ -126,12 +126,12 @@ docker exec controller-1 /opt/kafka/bin/kafka-metadata.sh \
   --cluster-id "$CLUSTER_ID" 2>/dev/null || true
 
 info "Verifying demo topic still exists and data is intact..."
-docker exec broker-1 /opt/kafka/bin/kafka-topics.sh \
+docker exec broker-1 /opt/kafka/bin/kafka-topics \
   --bootstrap-server broker-1:29092 \
   --describe --topic migration-test
 
 info "Consuming messages to verify data integrity..."
-MSG_COUNT=$(docker exec broker-1 /opt/kafka/bin/kafka-console-consumer.sh \
+MSG_COUNT=$(docker exec broker-1 /opt/kafka/bin/kafka-console-consumer \
   --bootstrap-server broker-1:29092 \
   --topic migration-test \
   --from-beginning \
@@ -176,17 +176,17 @@ ok "Phase 2 complete. Cluster is now running in pure KRaft mode!"
 phase "PHASE 3 — Post-Migration Validation"
 
 info "Listing all topics..."
-docker exec broker-1 /opt/kafka/bin/kafka-topics.sh \
+docker exec broker-1 /opt/kafka/bin/kafka-topics \
   --bootstrap-server broker-1:29092 \
   --list
 
 info "Describing migration-test topic..."
-docker exec broker-1 /opt/kafka/bin/kafka-topics.sh \
+docker exec broker-1 /opt/kafka/bin/kafka-topics \
   --bootstrap-server broker-1:29092 \
   --describe --topic migration-test
 
 info "Verifying data integrity — consuming all messages..."
-MSG_COUNT=$(docker exec broker-1 /opt/kafka/bin/kafka-console-consumer.sh \
+MSG_COUNT=$(docker exec broker-1 /opt/kafka/bin/kafka-console-consumer \
   --bootstrap-server broker-1:29092 \
   --topic migration-test \
   --from-beginning \
@@ -198,7 +198,7 @@ info "Producing new messages to verify write path..."
 docker exec broker-1 bash -c '
   for i in $(seq 101 110); do
     echo "post-migration-message-$i"
-  done | /opt/kafka/bin/kafka-console-producer.sh \
+  done | /opt/kafka/bin/kafka-console-producer \
     --bootstrap-server broker-1:29092 \
     --topic migration-test
 '
