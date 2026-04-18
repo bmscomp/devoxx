@@ -347,21 +347,33 @@ check-pid:
 	fi
 
 status:
-	@echo "\n$(CYAN)╭────────────────── Runtime Status ──────────────────╮$(NC)"
-	@printf "$(CYAN)│ $(YELLOW)%-18s$(CYAN) │ $(YELLOW)%-8s$(CYAN) │ $(YELLOW)%-18s$(CYAN) │\n$(NC)" "Node Context" "State" "Process Identifier"
-	@echo "$(CYAN)├────────────────────┼──────────┼────────────────────┤$(NC)"
+	@echo "\n$(CYAN)╭──────────────────────── Runtime Status ────────────────────────╮$(NC)"
+	@printf "$(CYAN)│ $(YELLOW)%-14s$(CYAN) │ $(YELLOW)%-8s$(CYAN) │ $(YELLOW)%-14s$(CYAN) │ $(YELLOW)%-14s$(CYAN) │\n$(NC)" "Node Context" "State" "Host Address" "Process ID"
+	@echo "$(CYAN)├────────────────┼──────────┼────────────────┼────────────────┤$(NC)"
 	@for pidfile in $(PIDS_DIR)/*.pid; do \
 		if [ -f "$$pidfile" ]; then \
 			pid=$$(cat $$pidfile); \
 			name=$$(basename $$pidfile .pid); \
+			case $$name in \
+				zk1) port="2181" ;; \
+				zk2) port="2182" ;; \
+				zk3) port="2183" ;; \
+				broker1) port="9092" ;; \
+				broker2) port="9096" ;; \
+				broker3) port="9097" ;; \
+				controller1) port="9093" ;; \
+				controller2) port="9094" ;; \
+				controller3) port="9095" ;; \
+				*) port="N/A" ;; \
+			esac; \
 			if ps -p $$pid > /dev/null; then \
-				printf "$(CYAN)│$(NC) %-18s $(CYAN)│$(NC) $(GREEN)%-8s$(CYAN) │$(NC) %-18s $(CYAN)│\n$(NC)" "$$name" "RUNNING" "PID $$pid"; \
+				printf "$(CYAN)│$(NC) %-14s $(CYAN)│$(NC) $(GREEN)%-8s$(CYAN) │$(NC) %-14s $(CYAN)│$(NC) %-14s $(CYAN)│\n$(NC)" "$$name" "RUNNING" "localhost:$$port" "PID $$pid"; \
 			else \
-				printf "$(CYAN)│$(NC) %-18s $(CYAN)│$(NC) $(RED)%-8s$(CYAN) │$(NC) %-18s $(CYAN)│\n$(NC)" "$$name" "STOPPED" "DEAD"; \
+				printf "$(CYAN)│$(NC) %-14s $(CYAN)│$(NC) $(RED)%-8s$(CYAN) │$(NC) %-14s $(CYAN)│$(NC) %-14s $(CYAN)│\n$(NC)" "$$name" "STOPPED" "localhost:$$port" "DEAD"; \
 			fi \
 		fi \
 	done
-	@echo "$(CYAN)╰────────────────────┴──────────┴────────────────────╯$(NC)"
+	@echo "$(CYAN)╰────────────────┴──────────┴────────────────┴────────────────╯$(NC)"
 
 clean: kill
 	@echo "$(YELLOW)▸ Wiping data and logs...$(NC)"
