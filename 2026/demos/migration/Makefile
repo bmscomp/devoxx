@@ -347,7 +347,7 @@ check-pid:
 	fi
 
 status:
-	@echo "\n$(CYAN)╭──────────────────────── Runtime Status ────────────────────────╮$(NC)"
+	@echo "\n$(CYAN)╭─────────────────────── Runtime Status ──────────────────────╮$(NC)"
 	@printf "$(CYAN)│ $(YELLOW)%-14s$(CYAN) │ $(YELLOW)%-8s$(CYAN) │ $(YELLOW)%-14s$(CYAN) │ $(YELLOW)%-14s$(CYAN) │\n$(NC)" "Node Context" "State" "Host Address" "Process ID"
 	@echo "$(CYAN)├────────────────┼──────────┼────────────────┼────────────────┤$(NC)"
 	@for pidfile in $(PIDS_DIR)/*.pid; do \
