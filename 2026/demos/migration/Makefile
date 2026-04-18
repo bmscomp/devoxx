@@ -27,6 +27,13 @@ RED    :=\033[0;31m
 CYAN   :=\033[0;36m
 NC     :=\033[0m
 
+define tui_cmd
+	@echo "\n$(CYAN)╭─ ⚡ $(YELLOW)$(1)$(NC)"
+	@echo "$(CYAN)├──────────────────────────────────────────────────────────────────────────$(NC)"
+	@echo "$(CYAN)│ $(NC)▶  $(2)$(NC)"
+	@echo "$(CYAN)╰──────────────────────────────────────────────────────────────────────────$(NC)"
+endef
+
 .PHONY: help download download-v4 setup-dirs start cluster-id check-version list-topics produce-messages consume-messages controllers bridge kraft verify-bridge verify-zookeeper verify-controllers verify-kraft upgrade check-pid status kill clean all
 
 help:
@@ -109,13 +116,13 @@ kill:
 start: download setup-dirs
 	@echo "\n$(CYAN)━━━ PHASE 0 — ZooKeeper Mode ━━━$(NC)"
 	
-	@echo "$(YELLOW)▸ Starting ZooKeepers (2GB Heap)...$(NC)"
+	$(call tui_cmd,Starting ZooKeepers (2GB Heap),zookeeper-server-start.sh zkX.properties)
 	@KAFKA_HEAP_OPTS="-Xmx2G -Xms2G" $(KAFKA_BIN)/zookeeper-server-start.sh $(CONFIG_DIR)/zk1.properties > $(LOGS_DIR)/zk1.log 2>&1 & echo $$! > $(PIDS_DIR)/zk1.pid
 	@KAFKA_HEAP_OPTS="-Xmx2G -Xms2G" $(KAFKA_BIN)/zookeeper-server-start.sh $(CONFIG_DIR)/zk2.properties > $(LOGS_DIR)/zk2.log 2>&1 & echo $$! > $(PIDS_DIR)/zk2.pid
 	@KAFKA_HEAP_OPTS="-Xmx2G -Xms2G" $(KAFKA_BIN)/zookeeper-server-start.sh $(CONFIG_DIR)/zk3.properties > $(LOGS_DIR)/zk3.log 2>&1 & echo $$! > $(PIDS_DIR)/zk3.pid
 	@sleep 5
 	
-	@echo "$(YELLOW)▸ Starting Kafka Brokers (ZK Mode, 4GB Heap)...$(NC)"
+	$(call tui_cmd,Starting Legacy Kafka Brokers (4GB Heap),kafka-server-start.sh phase0/brokerX.properties)
 	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase0/broker1.properties > $(LOGS_DIR)/broker1.log 2>&1 & echo $$! > $(PIDS_DIR)/broker1.pid
 	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase0/broker2.properties > $(LOGS_DIR)/broker2.log 2>&1 & echo $$! > $(PIDS_DIR)/broker2.pid
 	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase0/broker3.properties > $(LOGS_DIR)/broker3.log 2>&1 & echo $$! > $(PIDS_DIR)/broker3.pid
@@ -123,7 +130,7 @@ start: download setup-dirs
 	@echo "$(GREEN)▸ Waiting 15s for brokers to register...$(NC)"
 	@sleep 15
 	
-	@echo "$(YELLOW)▸ Creating test topic scaffolding...$(NC)"
+	$(call tui_cmd,Creating test topic scaffolding,kafka-topics.sh --create --topic devoxx-topic)
 	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --create --topic devoxx-topic --partitions 6 --replication-factor 3 2>/dev/null || true
 	@echo "$(GREEN)✓ Phase 0 complete.$(NC)"
 
@@ -131,6 +138,7 @@ start: download setup-dirs
 
 cluster-id:
 	@echo "\n$(CYAN)━━━ PHASE 0.5 — Extracting Cluster ID ━━━$(NC)"
+	$(call tui_cmd,Extracting Active Cluster ID via ZK Shell String Parity,zookeeper-shell.sh localhost:2181 get /cluster/id)
 	@CLUSTER_ID=$$($(KAFKA_BIN)/zookeeper-shell.sh localhost:2181 get /cluster/id 2>/dev/null | grep -o '"id":"[^"]*"' | cut -d'"' -f4); \
 	if [ -z "$$CLUSTER_ID" ]; then \
 		echo "$(RED)! Cannot extract cluster ID. ZK might be down.$(NC)"; exit 1; \
@@ -173,12 +181,12 @@ controllers:
 	@echo "\n$(CYAN)━━━ PHASE 0.5 — KRaft Controller Quorum Initialization ━━━$(NC)"
 	@if [ ! -f .cluster-id ]; then echo "$(RED)No .cluster-id found. Run 'make cluster-id' first.$(NC)"; exit 1; fi
 	
-	@echo "$(YELLOW)▸ Formatting KRaft Controllers with cluster ID...$(NC)"
+	$(call tui_cmd,Formatting KRaft Controllers with isolated cluster ID,kafka-storage.sh format)
 	@$(KAFKA_BIN)/kafka-storage.sh format -t $$(cat .cluster-id) -c $(CONFIG_DIR)/phase1/controller1.properties --ignore-formatted >/dev/null 2>&1
 	@$(KAFKA_BIN)/kafka-storage.sh format -t $$(cat .cluster-id) -c $(CONFIG_DIR)/phase1/controller2.properties --ignore-formatted >/dev/null 2>&1
 	@$(KAFKA_BIN)/kafka-storage.sh format -t $$(cat .cluster-id) -c $(CONFIG_DIR)/phase1/controller3.properties --ignore-formatted >/dev/null 2>&1
 	
-	@echo "$(YELLOW)▸ Starting KRaft Controllers...$(NC)"
+	$(call tui_cmd,Starting KRaft Controllers (Forming Initial Quorum),kafka-server-start.sh phase1/controllerX.properties)
 	@$(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase1/controller1.properties > $(LOGS_DIR)/controller1.log 2>&1 & echo $$! > $(PIDS_DIR)/controller1.pid
 	@$(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase1/controller2.properties > $(LOGS_DIR)/controller2.log 2>&1 & echo $$! > $(PIDS_DIR)/controller2.pid
 	@$(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase1/controller3.properties > $(LOGS_DIR)/controller3.log 2>&1 & echo $$! > $(PIDS_DIR)/controller3.pid
@@ -190,19 +198,19 @@ controllers:
 bridge:
 	@echo "\n$(CYAN)━━━ PHASE 1 — Bridge Mode (Dual Write) ━━━$(NC)"
 	
-	@echo "$(YELLOW)▸ Rolling Restart: Broker 1 (Bridge Mode)...$(NC)"
+	$(call tui_cmd,Rolling Restart: Broker 1 (Bridge Mode Dual-Write Array),kafka-server-start.sh phase1/broker1.properties)
 	@kill -15 $$(cat $(PIDS_DIR)/broker1.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase1/broker1.properties > $(LOGS_DIR)/broker1.log 2>&1 & echo $$! > $(PIDS_DIR)/broker1.pid
 	@sleep 6
 	
-	@echo "$(YELLOW)▸ Rolling Restart: Broker 2 (Bridge Mode)...$(NC)"
+	$(call tui_cmd,Rolling Restart: Broker 2 (Bridge Mode Dual-Write Array),kafka-server-start.sh phase1/broker2.properties)
 	@kill -15 $$(cat $(PIDS_DIR)/broker2.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase1/broker2.properties > $(LOGS_DIR)/broker2.log 2>&1 & echo $$! > $(PIDS_DIR)/broker2.pid
 	@sleep 6
 	
-	@echo "$(YELLOW)▸ Rolling Restart: Broker 3 (Bridge Mode)...$(NC)"
+	$(call tui_cmd,Rolling Restart: Broker 3 (Bridge Mode Dual-Write Array),kafka-server-start.sh phase1/broker3.properties)
 	@kill -15 $$(cat $(PIDS_DIR)/broker3.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase1/broker3.properties > $(LOGS_DIR)/broker3.log 2>&1 & echo $$! > $(PIDS_DIR)/broker3.pid
@@ -248,25 +256,25 @@ verify-kraft:
 kraft:
 	@echo "\n$(CYAN)━━━ PHASE 2 — KRaft Only Mode (Irreversible) ━━━$(NC)"
 	
-	@echo "$(YELLOW)▸ Rolling Restart: Broker 1 (KRaft Mode)...$(NC)"
+	$(call tui_cmd,Rolling Restart: Broker 1 (KRaft Mode Only),kafka-server-start.sh phase2/broker1.properties)
 	@kill -15 $$(cat $(PIDS_DIR)/broker1.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase2/broker1.properties > $(LOGS_DIR)/broker1.log 2>&1 & echo $$! > $(PIDS_DIR)/broker1.pid
 	@sleep 6
 	
-	@echo "$(YELLOW)▸ Rolling Restart: Broker 2 (KRaft Mode)...$(NC)"
+	$(call tui_cmd,Rolling Restart: Broker 2 (KRaft Mode Only),kafka-server-start.sh phase2/broker2.properties)
 	@kill -15 $$(cat $(PIDS_DIR)/broker2.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase2/broker2.properties > $(LOGS_DIR)/broker2.log 2>&1 & echo $$! > $(PIDS_DIR)/broker2.pid
 	@sleep 6
 	
-	@echo "$(YELLOW)▸ Rolling Restart: Broker 3 (KRaft Mode)...$(NC)"
+	$(call tui_cmd,Rolling Restart: Broker 3 (KRaft Mode Only),kafka-server-start.sh phase2/broker3.properties)
 	@kill -15 $$(cat $(PIDS_DIR)/broker3.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase2/broker3.properties > $(LOGS_DIR)/broker3.log 2>&1 & echo $$! > $(PIDS_DIR)/broker3.pid
 	@sleep 6
 	
-	@echo "$(YELLOW)▸ Stopping ZooKeeper Ensemble forever...$(NC)"
+	$(call tui_cmd,Permanently Decoupling ZooKeeper Quorum,kill -15 zkX.pid)
 	@kill -15 $$(cat $(PIDS_DIR)/zk1.pid) $$(cat $(PIDS_DIR)/zk2.pid) $$(cat $(PIDS_DIR)/zk3.pid) 2>/dev/null || true
 	@rm $(PIDS_DIR)/zk*.pid || true
 	
@@ -280,18 +288,19 @@ upgrade: download-v4
 	
 	@echo "\n$(YELLOW)▸ 1. Rolling Upgrade: Control Plane (Controllers to V4)...$(NC)"
 	@echo "$(CYAN)ℹ EXPLANATION: We strictly upgrade the KRaft controllers first. The control plane must always utilize a binary equal to or newer than the broker pool.$(NC)"
+	$(call tui_cmd,Rolling Upgrade: Controller 1 up to Kafka V4,kafka-server-start.sh phase3/controller1.properties)
 	@kill -15 $$(cat $(PIDS_DIR)/controller1.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx1G -Xms1G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/controller1.properties > $(LOGS_DIR)/controller1.log 2>&1 & echo $$! > $(PIDS_DIR)/controller1.pid
 	@sleep 6
 
-	@echo "$(YELLOW)▸ Upgrading Controller 2...$(NC)"
+	$(call tui_cmd,Rolling Upgrade: Controller 2 up to Kafka V4,kafka-server-start.sh phase3/controller2.properties)
 	@kill -15 $$(cat $(PIDS_DIR)/controller2.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx1G -Xms1G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/controller2.properties > $(LOGS_DIR)/controller2.log 2>&1 & echo $$! > $(PIDS_DIR)/controller2.pid
 	@sleep 6
 
-	@echo "$(YELLOW)▸ Upgrading Controller 3...$(NC)"
+	$(call tui_cmd,Rolling Upgrade: Controller 3 up to Kafka V4,kafka-server-start.sh phase3/controller3.properties)
 	@kill -15 $$(cat $(PIDS_DIR)/controller3.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx1G -Xms1G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/controller3.properties > $(LOGS_DIR)/controller3.log 2>&1 & echo $$! > $(PIDS_DIR)/controller3.pid
@@ -299,18 +308,20 @@ upgrade: download-v4
 
 	@echo "\n$(YELLOW)▸ 2. Rolling Upgrade: Data Plane (Brokers to V4)...$(NC)"
 	@echo "$(CYAN)ℹ EXPLANATION: Now that the KRaft control plane is running V4, we sequentially rolling-restart all data brokers to map them to the V4 binaries.$(NC)"
+	
+	$(call tui_cmd,Rolling Upgrade: Broker 1 up to Kafka V4,kafka-server-start.sh phase3/broker1.properties)
 	@kill -15 $$(cat $(PIDS_DIR)/broker1.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/broker1.properties > $(LOGS_DIR)/broker1.log 2>&1 & echo $$! > $(PIDS_DIR)/broker1.pid
 	@sleep 6
 
-	@echo "$(YELLOW)▸ Upgrading Broker 2...$(NC)"
+	$(call tui_cmd,Rolling Upgrade: Broker 2 up to Kafka V4,kafka-server-start.sh phase3/broker2.properties)
 	@kill -15 $$(cat $(PIDS_DIR)/broker2.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/broker2.properties > $(LOGS_DIR)/broker2.log 2>&1 & echo $$! > $(PIDS_DIR)/broker2.pid
 	@sleep 6
 
-	@echo "$(YELLOW)▸ Upgrading Broker 3...$(NC)"
+	$(call tui_cmd,Rolling Upgrade: Broker 3 up to Kafka V4,kafka-server-start.sh phase3/broker3.properties)
 	@kill -15 $$(cat $(PIDS_DIR)/broker3.pid) 2>/dev/null || true
 	@sleep 6
 	@KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/broker3.properties > $(LOGS_DIR)/broker3.log 2>&1 & echo $$! > $(PIDS_DIR)/broker3.pid
@@ -320,6 +331,8 @@ upgrade: download-v4
 	
 	@echo "\n$(YELLOW)▸ 3. Finalizing Metadata Feature Version Bump...$(NC)"
 	@echo "$(CYAN)ℹ EXPLANATION: All nodes are safely running Kafka V4 infrastructure, however the underlying metadata schema is still functionally bound to 3.9 natively. We run kafka-features.sh to permanently ratify the structure to 4.2.$(NC)"
+	
+	$(call tui_cmd,Dynamically Mapping Cluster Metadata Version to 4.2.0 Schema Abstract,kafka-features.sh upgrade --metadata 4.2)
 	@$(KAFKA_BIN_V4)/kafka-features.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 upgrade --metadata 4.2
 	@echo "$(GREEN)✓ Upgrade sequence complete. Cluster is natively executing Kafka 4.2.0!$(NC)"
 
