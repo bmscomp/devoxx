@@ -347,18 +347,21 @@ check-pid:
 	fi
 
 status:
-	@echo "$(CYAN)━━━ Runtime Status ━━━$(NC)"
+	@echo "\n$(CYAN)╭────────────────── Runtime Status ──────────────────╮$(NC)"
+	@printf "$(CYAN)│ $(YELLOW)%-18s$(CYAN) │ $(YELLOW)%-8s$(CYAN) │ $(YELLOW)%-18s$(CYAN) │\n$(NC)" "Node Context" "State" "Process Identifier"
+	@echo "$(CYAN)├────────────────────┼──────────┼────────────────────┤$(NC)"
 	@for pidfile in $(PIDS_DIR)/*.pid; do \
 		if [ -f "$$pidfile" ]; then \
 			pid=$$(cat $$pidfile); \
 			name=$$(basename $$pidfile .pid); \
 			if ps -p $$pid > /dev/null; then \
-				echo "$(GREEN)✔ $$name is RUNNING (PID $$pid)$(NC)"; \
+				printf "$(CYAN)│$(NC) %-18s $(CYAN)│$(NC) $(GREEN)%-8s$(CYAN) │$(NC) %-18s $(CYAN)│\n$(NC)" "$$name" "RUNNING" "PID $$pid"; \
 			else \
-				echo "$(RED)✘ $$name is STOPPED$(NC)"; \
+				printf "$(CYAN)│$(NC) %-18s $(CYAN)│$(NC) $(RED)%-8s$(CYAN) │$(NC) %-18s $(CYAN)│\n$(NC)" "$$name" "STOPPED" "DEAD"; \
 			fi \
 		fi \
 	done
+	@echo "$(CYAN)╰────────────────────┴──────────┴────────────────────╯$(NC)"
 
 clean: kill
 	@echo "$(YELLOW)▸ Wiping data and logs...$(NC)"
