@@ -225,8 +225,7 @@ This is a step many people skip or get wrong, and it is **the most common cause 
 
 ### Why This Matters
 
-Every Kafka cluster has a unique `cluster.id`. This ID is stored in ZooKeeper at the znode `/cluster/id`. When you deploy KRaft controllers, they **must** be initialized with the **exact same cluster ID**. If the IDs do not match, brokers will refuse to register with the KRaft controllers, and you will see cryptic errors like:
-
+make cle
 ```
 ClusterIdMismatchException: The cluster ID xyz does not match the expected cluster ID abc
 ```
@@ -545,14 +544,16 @@ kafka-dist/bin/... /opt/kafka/bin/kafka-consumer-groups.sh \
 
 ## 10. Upgrade Path to Kafka 4.x
 
-Once your cluster is running KRaft-only on Kafka 3.9.2, upgrading to Kafka 4.x is a **standard rolling upgrade** — no special migration steps needed.
+Once your cluster is running KRaft-only on Kafka 3.9.2, upgrading to Kafka 4.x is an elegant **rolling restart** sequence combined with a metadata schema bump. We guarantee zero downtime by maintaining full availability.
 
-### Steps
+### The Upgrade Sequence (`make upgrade`)
 
-1. **Update the downloaded binary version** to the 4.x release.
-2. **Rolling restart controllers first**, then brokers — one at a time, verifying cluster health after each restart.
+1. **Control Plane Upgrade**: The KRaft controllers undergo a rolling upgrade to Kafka V4 first. The control plane must always utilize a binary equal to or newer than the broker pool.
+2. **Data Plane Upgrade**: Once the control plane is running V4, we sequentially rolling-restart all data brokers to map them to the V4 binaries. 
+3. **Wait for Synchronization**: Allow the KRaft quorum roughly 20 seconds to completely synchronize node features. 
+4. **Finalizing Metadata Version**: We dynamically map the underlying metadata schema structure using `kafka-features.sh upgrade --release-version 4.2` (the clean syntax replacing the deprecated `--metadata` flag). This officially shifts the cluster's internal feature representation to `metadata.version=29`!
 
-3. **Remove legacy properties** that are no longer needed in 4.x (the ZK-related ones were already removed during migration).
+At any point, you can run `make check-version` to natively trace your live cluster! Instead of checking locally downloaded paths, it natively fetches the active `broker1` PID and uses standard `ps` parsing to undeniably assert the active running Java binary, accompanied by a dynamic `kafka-features.sh describe` read.
 
 > ⚠️ **Critical:** Kafka 4.0 removed ALL ZooKeeper code from the codebase. You **cannot** upgrade from a ZooKeeper-based cluster directly to 4.x. You must complete the KRaft migration on 3.9.x first.
 
@@ -817,6 +818,13 @@ make clean
 | `make kraft` | Phase 2 | Stop Bridge → start KRaft-only (**irreversible!**) |
 | `make verify-kraft` | Verify | Full validation: topics, dynamic data survival checks, writes, new topic creation |
 | `make upgrade` | Phase 3 | Sequentially upgrade binaries to Kafka 4.x and trigger definitive metadata schema jump |
+| `make controller-failover` | KRaft Demo | Kill active KRaft leader and time how fast a new one is elected |
+| `make metadata-shell` | KRaft Demo | Dump and inspect `__cluster_metadata` log records |
+| `make quorum-status` | KRaft Demo | Show KRaft quorum leadership and follower replication lag |
+| `make scale-partitions` | KRaft Demo | Create a 10,000-partition topic instantly to demonstrate KRaft scalability |
+| `make check-version` | Utility | Interrogates PID to assert live running binary and fetches metadata feature mapping |
+| `make produce-messages`| Utility | Auto-publish incremented messages to `devoxx-topic` exactly every 1 second |
+| `make consume-messages`| Utility | Stream all read elements securely from `devoxx-topic` |
 | `make status` | Utility | Show running processes |
 | `make clean` | Utility | Tear down all processes + volumes |
 | `make all` | All | Run Phase 0 → Phase 3 end-to-end |

@@ -19,7 +19,9 @@
   font-weight: 300;
 }
 
-.reveal h1, .reveal h2, .reveal h3 {
+.reveal h1,
+.reveal h2,
+.reveal h3 {
   font-weight: 700;
   text-transform: none;
   letter-spacing: -0.02em;
@@ -42,7 +44,7 @@
 .reveal pre {
   font-size: 0.55em;
   border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   border: 1px solid #e0e0e0;
 }
 
@@ -81,16 +83,41 @@
 
 /* ── Accent Colors: Blue, Black, Red only ── */
 
-.accent-blue   { color: var(--accent-blue); }
-.accent-red    { color: var(--accent-red); }
-.accent-black  { color: var(--accent-black); font-weight: 700; }
+.accent-blue {
+  color: var(--accent-blue);
+}
+
+.accent-red {
+  color: var(--accent-red);
+}
+
+.accent-black {
+  color: var(--accent-black);
+  font-weight: 700;
+}
 
 /* Legacy classes → mapped to 3-color palette */
-.accent-orange { color: var(--accent-blue); }
-.accent-green  { color: var(--accent-blue); }
-.accent-purple { color: var(--accent-black); font-weight: 700; }
-.accent-cyan   { color: var(--accent-blue); }
-.accent-yellow { color: var(--accent-black); font-weight: 700; }
+.accent-orange {
+  color: var(--accent-blue);
+}
+
+.accent-green {
+  color: var(--accent-blue);
+}
+
+.accent-purple {
+  color: var(--accent-black);
+  font-weight: 700;
+}
+
+.accent-cyan {
+  color: var(--accent-blue);
+}
+
+.accent-yellow {
+  color: var(--accent-black);
+  font-weight: 700;
+}
 
 /* ── Tags ── */
 
@@ -105,9 +132,20 @@
   margin-right: 8px;
 }
 
-.tag-part      { background: rgba(26, 115, 232, 0.1); color: var(--accent-blue); }
-.tag-demo      { background: rgba(26, 115, 232, 0.1); color: var(--accent-blue); }
-.tag-challenge { background: rgba(204, 0, 0, 0.08);   color: var(--accent-red); }
+.tag-part {
+  background: rgba(26, 115, 232, 0.1);
+  color: var(--accent-blue);
+}
+
+.tag-demo {
+  background: rgba(26, 115, 232, 0.1);
+  color: var(--accent-blue);
+}
+
+.tag-challenge {
+  background: rgba(204, 0, 0, 0.08);
+  color: var(--accent-red);
+}
 
 /* ── Subtitle ── */
 
@@ -163,7 +201,7 @@
 }
 
 .reveal table tr:hover td {
-  background: rgba(0,0,0,0.02);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 /* ── Diagram Box ── */
@@ -211,15 +249,21 @@
   letter-spacing: 0.03em;
 }
 
-.card p, .card ul {
+.card p,
+.card ul {
   font-size: 0.8em;
   margin: 0;
   color: #444;
   line-height: 1.5;
 }
 
-.card ul { margin-left: 16px; }
-.card li { margin-bottom: 4px; }
+.card ul {
+  margin-left: 16px;
+}
+
+.card li {
+  margin-bottom: 4px;
+}
 
 /* ── Progress Line ── */
 

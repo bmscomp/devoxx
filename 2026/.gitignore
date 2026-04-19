@@ -1,5 +1,8 @@
 demos/migration/kafka-dist/
+demos/migration/kafka-dist-v4/
+demos/migration/kafka_*.tgz
 demos/migration/.pids/
 demos/migration/data/
 demos/migration/logs/
 demos/migration/.cluster-id
+demos/migration/.scale-timer

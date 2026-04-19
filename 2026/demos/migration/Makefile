@@ -34,7 +34,7 @@ define tui_cmd
 	@echo "$(CYAN)╰──────────────────────────────────────────────────────────────────────────$(NC)"
 endef
 
-.PHONY: help download download-v4 setup-dirs start cluster-id check-version list-topics produce-messages consume-messages controllers bridge kraft verify-bridge verify-zookeeper verify-controllers verify-kraft upgrade check-pid status kill clean all
+.PHONY: help download download-v4 setup-dirs start cluster-id check-version list-topics produce-messages consume-messages controllers bridge kraft verify-bridge verify-zookeeper verify-controllers verify-kraft upgrade zk-failover controller-failover metadata-shell quorum-status scale-partitions restart-brokers check-pid status watch kill clean all
 
 help:
 	@echo "$(CYAN)Kafka Binary Migration Demo Targets$(NC)"
@@ -54,8 +54,23 @@ help:
 	@echo "$(YELLOW)kraft$(NC)                - Finalize KRaft (Irreversible!) - Restart brokers in KRaft mode"
 	@echo "$(YELLOW)verify-kraft$(NC)         - Final validation + create new topic"
 	@echo "$(YELLOW)upgrade$(NC)              - Rolling Upgrade to Kafka V4 (Phase 3)"
+	@echo ""
+	@echo "$(CYAN)Failover Demo Targets$(NC)"
+	@echo "-----------------------------------"
+	@echo "$(YELLOW)zk-failover$(NC)          - Kill active ZK controller broker and time failover"
+	@echo "$(YELLOW)controller-failover$(NC)  - Kill active KRaft leader and time recovery"
+	@echo ""
+	@echo "$(CYAN)KRaft Demo Targets$(NC)"
+	@echo "-----------------------------------"
+	@echo "$(YELLOW)metadata-shell$(NC)       - Browse the __cluster_metadata log interactively"
+	@echo "$(YELLOW)quorum-status$(NC)        - Show KRaft replication status with lag details"
+	@echo "$(YELLOW)scale-partitions$(NC)     - Create a 10,000-partition topic instantly (KRaft power)"
+	@echo ""
+	@echo "$(CYAN)Utilities$(NC)"
+	@echo "-----------------------------------"
 	@echo "$(YELLOW)check-pid$(NC)            - Check details of a specific process (usage: make check-pid PID=123)"
 	@echo "$(YELLOW)status$(NC)               - Check running Java PIDs"
+	@echo "$(YELLOW)watch$(NC)                - Live-updating status dashboard (refreshes every 2s)"
 	@echo "$(YELLOW)clean$(NC)                - Kill all PIDs and wipe data/logs"
 	@echo "$(YELLOW)all$(NC)                  - Run full automated migration"
 
@@ -134,6 +149,58 @@ start: download setup-dirs
 	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --create --topic devoxx-topic --partitions 6 --replication-factor 3 2>/dev/null || true
 	@echo "$(GREEN)✓ Phase 0 complete.$(NC)"
 
+# ── ZooKeeper Failover Demo ───────────────────────────────────
+
+zk-failover:
+	@echo "\n$(CYAN)━━━ ZooKeeper Demo: Controller Failover Recovery ━━━$(NC)"
+	$(call tui_cmd,Identifying Active ZK Controller Broker,zookeeper-shell.sh get /controller)
+	@CTRL_JSON=$$($(KAFKA_BIN)/zookeeper-shell.sh localhost:2181 get /controller 2>/dev/null | grep 'brokerid'); \
+	if [ -z "$$CTRL_JSON" ]; then \
+		echo "$(RED)! ZooKeeper is offline or no controller elected.$(NC)"; exit 1; \
+	fi; \
+	BROKER_ID=$$(echo "$$CTRL_JSON" | grep -o '"brokerid":[0-9]*' | cut -d: -f2); \
+	echo "$(GREEN)   Active ZK Controller: Broker $$BROKER_ID$(NC)"; \
+	PID_FILE="$(PIDS_DIR)/broker$$BROKER_ID.pid"; \
+	if [ ! -f "$$PID_FILE" ]; then \
+		echo "$(RED)! PID file not found for broker $$BROKER_ID.$(NC)"; exit 1; \
+	fi; \
+	echo ""; \
+	echo "$(CYAN)╭─ ⚡ $(YELLOW)Killing Active ZK Controller (Broker $$BROKER_ID)$(NC)"; \
+	echo "$(CYAN)├──────────────────────────────────────────────────────────────────────────$(NC)"; \
+	echo "$(CYAN)│ $(NC)▶  kill -9 $$(cat $$PID_FILE)$(NC)"; \
+	echo "$(CYAN)╰──────────────────────────────────────────────────────────────────────────$(NC)"; \
+	kill -9 $$(cat $$PID_FILE) 2>/dev/null || true; \
+	START_TIME=$$(python3 -c 'import time; print(time.time())'); \
+	echo "$(YELLOW)▸ Controller killed. Waiting for ZooKeeper to elect a new controller...$(NC)"; \
+	echo "$(YELLOW)  (This typically takes 30-90 seconds with ZooKeeper)$(NC)"; \
+	while true; do \
+		NEW_JSON=$$($(KAFKA_BIN)/zookeeper-shell.sh localhost:2181 get /controller 2>/dev/null | grep 'brokerid' || true); \
+		if [ -n "$$NEW_JSON" ]; then \
+			NEW_BROKER=$$(echo "$$NEW_JSON" | grep -o '"brokerid":[0-9]*' | cut -d: -f2); \
+			if [ -n "$$NEW_BROKER" ] && [ "$$NEW_BROKER" != "$$BROKER_ID" ]; then \
+				END_TIME=$$(python3 -c 'import time; print(time.time())'); \
+				ELAPSED=$$(python3 -c "print(f'{$$END_TIME - $$START_TIME:.2f}')"); \
+				echo "$(GREEN)✓ New ZK Controller elected: Broker $$NEW_BROKER in $${ELAPSED}s$(NC)"; \
+				break; \
+			fi; \
+		fi; \
+		sleep 1; \
+	done; \
+	echo "$(YELLOW)▸ Restarting killed broker to rejoin cluster...$(NC)"; \
+	CONFIG_PHASE="phase0"; \
+	if [ -f "$(CONFIG_DIR)/phase2/broker$$BROKER_ID.properties" ] && ! [ -f "$(PIDS_DIR)/zk1.pid" ]; then \
+		CONFIG_PHASE="phase2"; \
+	elif [ -f "$(CONFIG_DIR)/phase1/broker$$BROKER_ID.properties" ] && [ -f "$(PIDS_DIR)/controller1.pid" ]; then \
+		CONFIG_PHASE="phase1"; \
+	fi; \
+	KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/$$CONFIG_PHASE/broker$$BROKER_ID.properties > $(LOGS_DIR)/broker$$BROKER_ID.log 2>&1 & echo $$! > $(PIDS_DIR)/broker$$BROKER_ID.pid; \
+	echo "$(GREEN)✓ Broker $$BROKER_ID restarted and rejoining cluster.$(NC)"; \
+	echo ""; \
+	echo "$(CYAN)┌─────────────────────────────────────────────────────────────┐$(NC)"; \
+	echo "$(CYAN)│$(NC)  $(YELLOW)Compare this with 'make controller-failover' in KRaft mode$(NC)  $(CYAN)│$(NC)"; \
+	echo "$(CYAN)│$(NC)  $(YELLOW)to see the dramatic improvement in election speed!$(NC)        $(CYAN)│$(NC)"; \
+	echo "$(CYAN)└─────────────────────────────────────────────────────────────┘$(NC)"
+
 # ── Extract Cluster ID ────────────────────────────────────────
 
 cluster-id:
@@ -150,16 +217,20 @@ cluster-id:
 
 check-version:
 	@echo "\n$(CYAN)━━━ Kafka Version ━━━$(NC)"
-	@if [ -d "$(KAFKA_DIR_V4)" ]; then \
-		echo "$(YELLOW)▸ Using V4 CLI Binary (4.2.0):$(NC)"; \
-		$(KAFKA_BIN_V4)/kafka-topics.sh --version; \
-		echo "\n$(YELLOW)▸ Active Cluster Feature Metadata (Parsed via V4):$(NC)"; \
-		$(KAFKA_BIN_V4)/kafka-features.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 describe 2>/dev/null || echo "$(RED)Cluster is currently offline or unreachable.$(NC)"; \
+	@if [ -f "$(PIDS_DIR)/broker1.pid" ] && ps -p $$(cat $(PIDS_DIR)/broker1.pid) > /dev/null 2>&1; then \
+		if ps -f -p $$(cat $(PIDS_DIR)/broker1.pid) | grep -q "kafka-dist-v4"; then \
+			echo "$(YELLOW)▸ Active Brokers running V4 Binary (4.2.0):$(NC)"; \
+			$(KAFKA_BIN_V4)/kafka-topics.sh --version; \
+			echo "\n$(YELLOW)▸ Active Cluster Feature Metadata (Parsed via V4):$(NC)"; \
+			$(KAFKA_BIN_V4)/kafka-features.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 describe 2>/dev/null || echo "$(RED)Cluster is currently offline or unreachable.$(NC)"; \
+		else \
+			echo "$(YELLOW)▸ Active Brokers running V3 Binary (3.9.x):$(NC)"; \
+			$(KAFKA_BIN)/kafka-topics.sh --version; \
+			echo "\n$(YELLOW)▸ Active Cluster Feature Metadata (Parsed via V3):$(NC)"; \
+			$(KAFKA_BIN)/kafka-features.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 describe 2>/dev/null || echo "$(RED)Cluster is currently offline or unreachable.$(NC)"; \
+		fi \
 	else \
-		echo "$(YELLOW)▸ Using V3 CLI Binary (3.9.x):$(NC)"; \
-		$(KAFKA_BIN)/kafka-topics.sh --version; \
-		echo "\n$(YELLOW)▸ Active Cluster Feature Metadata (Parsed via V3):$(NC)"; \
-		$(KAFKA_BIN)/kafka-features.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 describe 2>/dev/null || echo "$(RED)Cluster is currently offline or unreachable.$(NC)"; \
+		echo "$(RED)▸ Cluster broker1 is offline. Cannot determine running version.$(NC)"; \
 	fi
 
 list-topics:
@@ -168,12 +239,14 @@ list-topics:
 
 produce-messages:
 	@echo "\n$(CYAN)━━━ Auto-Publishing to 'devoxx-topic' ━━━$(NC)"
-	@echo "$(YELLOW)Sending an incremented message every 0.6 seconds. Press Ctrl+C to stop.$(NC)"
-	@python3 -u -c 'exec("import time, datetime\ni=1\nwhile True:\n    ts=datetime.datetime.now().strftime(\"%Y-%m-%d %H:%M:%S.%f\")[:-3]\n    print(f\"devoxx-{i}-{ts}\", flush=True)\n    i+=1\n    time.sleep(0.6)")' | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic devoxx-topic
+	@echo "$(YELLOW)Sending an incremented message every 1 second. Press Ctrl+C to stop.$(NC)"
+	@python3 -u scripts/producer.py 2>/dev/null | $(KAFKA_BIN)/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic devoxx-topic 2>/dev/null; true
 
 consume-messages:
 	@echo "\n$(CYAN)━━━ Reading from 'devoxx-topic' ━━━$(NC)"
-	@$(KAFKA_BIN)/kafka-console-consumer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic devoxx-topic --from-beginning
+	@echo "$(YELLOW)Press Ctrl+C to stop.$(NC)"
+	@$(KAFKA_BIN)/kafka-console-consumer.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --topic devoxx-topic --from-beginning 2>/dev/null || true
+	@echo "\n$(GREEN)✓ Consumer stopped gracefully.$(NC)"
 
 # ── Phase 0.5 ─────────────────────────────────────────────────
 
@@ -284,10 +357,8 @@ kraft:
 
 upgrade: download-v4
 	@echo "\n$(CYAN)━━━ PHASE 3 — Kafka 4.2.0 Rolling Upgrade ━━━$(NC)"
-	@echo "$(CYAN)ℹ EXPLANATION: Upgrading major Kafka versions is executed natively as a rolling restart while the cluster remains fully operational, guaranteeing zero downtime.$(NC)"
 	
 	@echo "\n$(YELLOW)▸ 1. Rolling Upgrade: Control Plane (Controllers to V4)...$(NC)"
-	@echo "$(CYAN)ℹ EXPLANATION: We strictly upgrade the KRaft controllers first. The control plane must always utilize a binary equal to or newer than the broker pool.$(NC)"
 	$(call tui_cmd,Rolling Upgrade: Controller 1 up to Kafka V4,kafka-server-start.sh phase3/controller1.properties)
 	@kill -15 $$(cat $(PIDS_DIR)/controller1.pid) 2>/dev/null || true
 	@sleep 6
@@ -307,7 +378,6 @@ upgrade: download-v4
 	@sleep 6
 
 	@echo "\n$(YELLOW)▸ 2. Rolling Upgrade: Data Plane (Brokers to V4)...$(NC)"
-	@echo "$(CYAN)ℹ EXPLANATION: Now that the KRaft control plane is running V4, we sequentially rolling-restart all data brokers to map them to the V4 binaries.$(NC)"
 	
 	$(call tui_cmd,Rolling Upgrade: Broker 1 up to Kafka V4,kafka-server-start.sh phase3/broker1.properties)
 	@kill -15 $$(cat $(PIDS_DIR)/broker1.pid) 2>/dev/null || true
@@ -330,11 +400,149 @@ upgrade: download-v4
 	@sleep 20
 	
 	@echo "\n$(YELLOW)▸ 3. Finalizing Metadata Feature Version Bump...$(NC)"
-	@echo "$(CYAN)ℹ EXPLANATION: All nodes are safely running Kafka V4 infrastructure, however the underlying metadata schema is still functionally bound to 3.9 natively. We run kafka-features.sh to permanently ratify the structure to 4.2.$(NC)"
 	
-	$(call tui_cmd,Dynamically Mapping Cluster Metadata Version to 4.2.0 Schema Abstract,kafka-features.sh upgrade --metadata 4.2)
-	@$(KAFKA_BIN_V4)/kafka-features.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 upgrade --metadata 4.2
+	$(call tui_cmd,Dynamically Mapping Cluster Metadata Version to 4.2.0 Schema Abstract,kafka-features.sh upgrade --release-version 4.2)
+	@$(KAFKA_BIN_V4)/kafka-features.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 upgrade --release-version 4.2
 	@echo "$(GREEN)✓ Upgrade sequence complete. Cluster is natively executing Kafka 4.2.0!$(NC)"
+
+# ── KRaft Demo Targets ────────────────────────────────────────
+
+controller-failover:
+	@echo "\n$(CYAN)━━━ KRaft Demo: Controller Failover Recovery ━━━$(NC)"
+	$(call tui_cmd,Identifying Active KRaft Leader,kafka-metadata-quorum.sh describe --status)
+	@LEADER_ID=$$($(KAFKA_BIN)/kafka-metadata-quorum.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 describe --status 2>/dev/null | grep 'LeaderId' | awk '{print $$NF}'); \
+	if [ -z "$$LEADER_ID" ]; then \
+		echo "$(RED)! KRaft quorum is offline. Start controllers first.$(NC)"; exit 1; \
+	fi; \
+	echo "$(GREEN)   Active Leader: Node $$LEADER_ID$(NC)"; \
+	PID_FILE="$(PIDS_DIR)/controller$$(($$LEADER_ID - 99)).pid"; \
+	if [ ! -f "$$PID_FILE" ]; then \
+		echo "$(RED)! PID file not found for controller leader.$(NC)"; exit 1; \
+	fi; \
+	echo "";\
+	echo "$(CYAN)╭─ ⚡ $(YELLOW)Killing Active Leader (Node $$LEADER_ID)$(NC)"; \
+	echo "$(CYAN)├──────────────────────────────────────────────────────────────────────────$(NC)"; \
+	echo "$(CYAN)│ $(NC)▶  kill -9 $$(cat $$PID_FILE)$(NC)"; \
+	echo "$(CYAN)╰──────────────────────────────────────────────────────────────────────────$(NC)"; \
+	kill -9 $$(cat $$PID_FILE) 2>/dev/null || true; \
+	START_TIME=$$(python3 -c 'import time; print(time.time())'); \
+	echo "$(YELLOW)▸ Leader killed. Waiting for new election...$(NC)"; \
+	while true; do \
+		NEW_LEADER=$$($(KAFKA_BIN)/kafka-metadata-quorum.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 describe --status 2>/dev/null | grep 'LeaderId' | awk '{print $$NF}'); \
+		if [ -n "$$NEW_LEADER" ] && [ "$$NEW_LEADER" != "$$LEADER_ID" ]; then \
+			END_TIME=$$(python3 -c 'import time; print(time.time())'); \
+			ELAPSED=$$(python3 -c "print(f'{$$END_TIME - $$START_TIME:.2f}')"); \
+			echo "$(GREEN)✓ New Leader elected: Node $$NEW_LEADER in $${ELAPSED}s$(NC)"; \
+			break; \
+		fi; \
+		sleep 0.5; \
+	done; \
+	echo "$(YELLOW)▸ Restarting killed controller to rejoin quorum...$(NC)"; \
+	CTRL_NUM=$$(($$LEADER_ID - 99)); \
+	CONFIG_PHASE="phase1"; \
+	if [ -d "$(KAFKA_DIR_V4)" ] && ps -f -p $$(cat $(PIDS_DIR)/broker1.pid 2>/dev/null) 2>/dev/null | grep -q "kafka-dist-v4"; then \
+		CONFIG_PHASE="phase3"; \
+		KAFKA_HEAP_OPTS="-Xmx1G -Xms1G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/$$CONFIG_PHASE/controller$$CTRL_NUM.properties > $(LOGS_DIR)/controller$$CTRL_NUM.log 2>&1 & echo $$! > $(PIDS_DIR)/controller$$CTRL_NUM.pid; \
+	else \
+		$(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/$$CONFIG_PHASE/controller$$CTRL_NUM.properties > $(LOGS_DIR)/controller$$CTRL_NUM.log 2>&1 & echo $$! > $(PIDS_DIR)/controller$$CTRL_NUM.pid; \
+	fi; \
+	echo "$(GREEN)✓ Controller $$CTRL_NUM restarted and rejoining quorum.$(NC)"
+
+metadata-shell:
+	@echo "\n$(CYAN)━━━ KRaft Demo: Cluster Metadata Log Inspection ━━━$(NC)"
+	$(call tui_cmd,Dumping __cluster_metadata records (last 30),kafka-dump-log.sh --cluster-metadata-decoder)
+	@LATEST_LOG=$$(ls -t $(DATA_DIR)/controller1/__cluster_metadata-0/*.log 2>/dev/null | head -1); \
+	if [ -z "$$LATEST_LOG" ]; then \
+		echo "$(RED)! No __cluster_metadata log found. Start controllers first.$(NC)"; exit 1; \
+	fi; \
+	$(KAFKA_BIN)/kafka-dump-log.sh --cluster-metadata-decoder --files $$LATEST_LOG 2>/dev/null | tail -80
+
+quorum-status:
+	@echo "\n$(CYAN)━━━ KRaft Demo: Raft Quorum Replication Status ━━━$(NC)"
+	$(call tui_cmd,Quorum Leadership Status,kafka-metadata-quorum.sh describe --status)
+	@$(KAFKA_BIN)/kafka-metadata-quorum.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 describe --status 2>/dev/null || echo "$(RED) KRaft Quorum offline.$(NC)"
+	@echo ""
+	$(call tui_cmd,Quorum Replication Details (Follower Lag),kafka-metadata-quorum.sh describe --replication --human-readable)
+	@$(KAFKA_BIN)/kafka-metadata-quorum.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 describe --replication --human-readable 2>/dev/null || echo "$(RED) KRaft Quorum offline.$(NC)"
+
+scale-partitions:
+	@echo "\n$(CYAN)━━━ KRaft Demo: Massive Partition Scalability ━━━$(NC)"
+	@echo "$(YELLOW)▸ With ZooKeeper, ~200K partitions was the practical ceiling.$(NC)"
+	@echo "$(YELLOW)▸ With KRaft, millions of partitions are supported natively.$(NC)"
+	@echo ""
+	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --delete --topic scale-test >/dev/null 2>&1 || true
+	@sleep 2
+	$(call tui_cmd,Creating initial topic with 1000 partitions,kafka-topics.sh --create --topic scale-test --partitions 1000)
+	@python3 -c 'import time; open(".scale-timer","w").write(str(time.time()))'
+	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --command-config $(CONFIG_DIR)/admin-client.properties --create --topic scale-test --partitions 1000 --replication-factor 1 --if-not-exists 2>/dev/null
+	@echo "$(GREEN)   ▸ 1,000 partitions created$(NC)"
+	@echo ""
+	$(call tui_cmd,Scaling up to 10000 partitions dynamically,kafka-topics.sh --alter --topic scale-test --partitions ...)
+	@for COUNT in 3000 5000 7000 10000; do \
+		$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --command-config $(CONFIG_DIR)/admin-client.properties --alter --topic scale-test --partitions $$COUNT 2>/dev/null; \
+		echo "$(GREEN)   ▸ Scaled to $$COUNT partitions$(NC)"; \
+	done
+	@ELAPSED=$$(python3 -c "import time; print(f'{time.time() - float(open(\".scale-timer\").read()):.2f}')"); \
+	echo "$(GREEN)✓ 10,000 partitions reached in $${ELAPSED}s total$(NC)"; \
+	rm -f .scale-timer
+	@sleep 3
+	@echo ""
+	$(call tui_cmd,Verifying topic metadata,kafka-topics.sh --describe --topic scale-test)
+	@$(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --command-config $(CONFIG_DIR)/admin-client.properties --describe --topic scale-test 2>/dev/null | head -1
+	@PART_COUNT=$$($(KAFKA_BIN)/kafka-topics.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 --command-config $(CONFIG_DIR)/admin-client.properties --describe --topic scale-test 2>/dev/null | grep -c 'Partition:'); \
+	echo "$(GREEN)   Confirmed: $$PART_COUNT partitions active across the cluster.$(NC)"
+
+restart-brokers:
+	@echo "\n$(CYAN)━━━ Restarting Dead Nodes ━━━$(NC)"
+	@RESTARTED=0; \
+	echo "$(CYAN)── Brokers ──$(NC)"; \
+	for BROKER_NUM in 1 2 3; do \
+		PID_FILE="$(PIDS_DIR)/broker$$BROKER_NUM.pid"; \
+		if [ -f "$$PID_FILE" ] && ps -p $$(cat $$PID_FILE) > /dev/null 2>&1; then \
+			echo "$(GREEN)   ▸ Broker $$BROKER_NUM is healthy (PID $$(cat $$PID_FILE))$(NC)"; \
+		else \
+			echo "$(YELLOW)   ▸ Broker $$BROKER_NUM is dead. Restarting...$(NC)"; \
+			if [ -d "$(KAFKA_DIR_V4)" ] && [ -f "$(CONFIG_DIR)/phase3/broker$$BROKER_NUM.properties" ] && [ -f "$(PIDS_DIR)/controller1.pid" ] && ! [ -f "$(PIDS_DIR)/zk1.pid" ]; then \
+				KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/broker$$BROKER_NUM.properties > $(LOGS_DIR)/broker$$BROKER_NUM.log 2>&1 & echo $$! > $$PID_FILE; \
+				echo "$(GREEN)   ✓ Broker $$BROKER_NUM restarted (V4 / KRaft)$(NC)"; \
+			elif [ -f "$(PIDS_DIR)/controller1.pid" ] && ! [ -f "$(PIDS_DIR)/zk1.pid" ] && [ -f "$(CONFIG_DIR)/phase2/broker$$BROKER_NUM.properties" ]; then \
+				KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase2/broker$$BROKER_NUM.properties > $(LOGS_DIR)/broker$$BROKER_NUM.log 2>&1 & echo $$! > $$PID_FILE; \
+				echo "$(GREEN)   ✓ Broker $$BROKER_NUM restarted (V3 / KRaft)$(NC)"; \
+			elif [ -f "$(PIDS_DIR)/controller1.pid" ] && [ -f "$(CONFIG_DIR)/phase1/broker$$BROKER_NUM.properties" ]; then \
+				KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase1/broker$$BROKER_NUM.properties > $(LOGS_DIR)/broker$$BROKER_NUM.log 2>&1 & echo $$! > $$PID_FILE; \
+				echo "$(GREEN)   ✓ Broker $$BROKER_NUM restarted (V3 / Bridge)$(NC)"; \
+			else \
+				KAFKA_HEAP_OPTS="-Xmx4G -Xms4G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/phase0/broker$$BROKER_NUM.properties > $(LOGS_DIR)/broker$$BROKER_NUM.log 2>&1 & echo $$! > $$PID_FILE; \
+				echo "$(GREEN)   ✓ Broker $$BROKER_NUM restarted (V3 / ZooKeeper)$(NC)"; \
+			fi; \
+			RESTARTED=$$((RESTARTED + 1)); \
+		fi; \
+	done; \
+	echo "$(CYAN)── Controllers ──$(NC)"; \
+	for CTRL_NUM in 1 2 3; do \
+		PID_FILE="$(PIDS_DIR)/controller$$CTRL_NUM.pid"; \
+		if [ -f "$$PID_FILE" ] && ps -p $$(cat $$PID_FILE) > /dev/null 2>&1; then \
+			echo "$(GREEN)   ▸ Controller $$CTRL_NUM is healthy (PID $$(cat $$PID_FILE))$(NC)"; \
+		elif [ -f "$$PID_FILE" ] || [ -d "$(DATA_DIR)/controller$$CTRL_NUM" ]; then \
+			echo "$(YELLOW)   ▸ Controller $$CTRL_NUM is dead. Restarting...$(NC)"; \
+			if [ -d "$(KAFKA_DIR_V4)" ] && [ -f "$(CONFIG_DIR)/phase3/controller$$CTRL_NUM.properties" ]; then \
+				KAFKA_HEAP_OPTS="-Xmx1G -Xms1G" $(KAFKA_BIN_V4)/kafka-server-start.sh $(CONFIG_DIR)/phase3/controller$$CTRL_NUM.properties > $(LOGS_DIR)/controller$$CTRL_NUM.log 2>&1 & echo $$! > $$PID_FILE; \
+				echo "$(GREEN)   ✓ Controller $$CTRL_NUM restarted (V4)$(NC)"; \
+			else \
+				KAFKA_HEAP_OPTS="-Xmx1G -Xms1G" $(KAFKA_BIN)/kafka-server-start.sh $(CONFIG_DIR)/kraft-controller/controller$$CTRL_NUM.properties > $(LOGS_DIR)/controller$$CTRL_NUM.log 2>&1 & echo $$! > $$PID_FILE; \
+				echo "$(GREEN)   ✓ Controller $$CTRL_NUM restarted (V3)$(NC)"; \
+			fi; \
+			RESTARTED=$$((RESTARTED + 1)); \
+		fi; \
+	done; \
+	echo ""; \
+	if [ $$RESTARTED -eq 0 ]; then \
+		echo "$(GREEN)✓ All nodes are healthy. Nothing to restart.$(NC)"; \
+	else \
+		echo "$(GREEN)✓ Restarted $$RESTARTED node(s). Waiting 5s for stabilization...$(NC)"; \
+		sleep 5; \
+		echo "$(GREEN)✓ Cluster should be stable now.$(NC)"; \
+	fi
 
 # ── Status & Cleanup ──────────────────────────────────────────
 
@@ -374,6 +582,9 @@ status:
 		fi \
 	done
 	@echo "$(CYAN)╰────────────────┴──────────┴────────────────┴────────────────╯$(NC)"
+
+watch:
+	@watch --color -n 2 $(MAKE) --no-print-directory status
 
 clean: kill
 	@echo "$(YELLOW)▸ Wiping data and logs...$(NC)"

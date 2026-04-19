@@ -1,4 +1,4 @@
-<span class="tag tag-part">Part 9</span>
+<span class="tag tag-part">Part 7</span>
 
 ## Key Takeaways
 
