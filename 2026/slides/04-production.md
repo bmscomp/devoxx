@@ -255,7 +255,7 @@ Metrics that save you at 3 AM <!-- .element: class="subtitle" -->
 <li><code>MessagesInPerSec</code></li>
 </ul>
 </div>
-<div class="card fragment" style="border-top: 3px solid var(--accent-red);">
+<div class="card card-danger fragment">
 <h4>🚨 Alert On</h4>
 <ul>
 <li><code>UnderReplicatedPartitions > 0</code></li>
@@ -329,16 +329,16 @@ Another "photograph this" slide. The simplification is massive for day-2 ops.
 Three-phase rolling migration — no downtime <!-- .element: class="subtitle" -->
 
 <div class="card-grid three-col" style="margin-top: 25px;">
-<div class="card fragment" style="border-top: 3px solid var(--accent-black);">
-<h4>Phase 1: ZK Mode</h4>
+<div class="card card-warning fragment">
+<h4 class="accent-orange">Phase 1: ZK Mode</h4>
 <p>Deploy KRaft controllers alongside existing ZK cluster</p>
 </div>
 <div class="card fragment" style="border-top: 3px solid var(--accent-blue);">
-<h4>Phase 2: Bridge Mode</h4>
+<h4 class="accent-blue">Phase 2: Bridge Mode</h4>
 <p>Active controller dual-writes: ZK ↔ <code>__cluster_metadata</code></p>
 </div>
-<div class="card fragment" style="border-top: 3px solid var(--accent-blue);">
-<h4>Phase 3: KRaft Mode</h4>
+<div class="card card-success fragment">
+<h4 class="accent-green">Phase 3: KRaft Mode</h4>
 <p>Remove <code>zookeeper.connect</code>, decommission ZK</p>
 </div>
 </div>

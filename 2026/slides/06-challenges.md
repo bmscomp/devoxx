@@ -22,11 +22,11 @@ This section covers both migration anti-patterns and ongoing KRaft operational c
 > "Bridge mode works, let's finalize immediately!"
 
 <div class="card-grid" style="margin-top: 20px;">
-<div class="card fragment" style="border-color: var(--accent-red);">
+<div class="card card-danger fragment">
 <h4 class="accent-red">🚫 What people do</h4>
 <p>Run bridge mode for a few hours, see "it works," and immediately run <code>kafka-metadata.sh finalize</code>.</p>
 </div>
-<div class="card fragment" style="border-color: var(--accent-blue);">
+<div class="card card-success fragment">
 <h4 class="accent-green">✅ What you should do</h4>
 <p>Run bridge mode for <strong>weeks</strong>. Observe through peak traffic, rolling restarts, broker failures, and consumer rebalances before finalizing.</p>
 </div>
@@ -46,15 +46,15 @@ This slide absorbs the "one-way door" and "no rollback plan" messages. No need t
 The migration requires a very specific version path <!-- .element: class="subtitle" -->
 
 <div class="card-grid three-col" style="margin-top: 20px;">
-<div class="card fragment" style="border-top: 3px solid var(--accent-red);">
+<div class="card card-danger fragment">
 <h4>🚫 Skip versions</h4>
 <p>Jump from Kafka 2.8 directly to 4.x</p>
 <p style="color: var(--accent-red); font-weight: 600;">= Data loss risk</p>
 </div>
-<div class="card fragment" style="border-top: 3px solid var(--accent-blue);">
+<div class="card card-success fragment">
 <h4>✅ Follow the path</h4>
 <p>2.x → 3.3+ → 3.7+ (bridge) → 3.9+ (finalize) → 4.x</p>
-<p style="color: var(--accent-blue); font-weight: 600;">= Safe migration</p>
+<p style="color: var(--accent-green); font-weight: 600;">= Safe migration</p>
 </div>
 <div class="card fragment" style="border-top: 3px solid var(--accent-black);">
 <h4>📋 Check IBP</h4>
@@ -84,7 +84,7 @@ KIP-833 defines the exact migration path. Skipping IBP steps can corrupt the met
 Two common operational mistakes <!-- .element: class="subtitle" -->
 
 <div class="card-grid" style="margin-top: 20px;">
-<div class="card fragment" style="border-color: var(--accent-red);">
+<div class="card card-danger fragment">
 <h4 class="accent-red">🚫 Combined Mode in Production</h4>
 <ul>
 <li>Controller Raft traffic competes with broker I/O</li>
@@ -93,7 +93,7 @@ Two common operational mistakes <!-- .element: class="subtitle" -->
 <li>Use <strong>dedicated controllers</strong> always</li>
 </ul>
 </div>
-<div class="card fragment" style="border-color: var(--accent-red);">
+<div class="card card-danger fragment">
 <h4 class="accent-red">🚫 Leaving ZK Running After Finalization</h4>
 <ul>
 <li>Stale znodes confuse operators</li>
@@ -114,11 +114,11 @@ Combined mode exists for dev convenience. Apache removed the recommendation from
 The silent killer during bridge mode <!-- .element: class="subtitle" -->
 
 <div class="card-grid" style="margin-top: 20px;">
-<div class="card fragment">
+<div class="card card-danger fragment">
 <h4 class="accent-red">🚫 Never verify</h4>
 <p>Assume bridge mode "just works" and finalize without checking metadata parity.</p>
 </div>
-<div class="card fragment">
+<div class="card card-success fragment">
 <h4 class="accent-green">✅ Continuously verify</h4>
 <p>Compare ZK metadata with <code>__cluster_metadata</code> log before every milestone.</p>
 </div>
@@ -146,7 +146,7 @@ Metadata drift between ZK and KRaft during bridge mode is rare but possible, esp
 Don't migrate during peak traffic <!-- .element: class="subtitle" -->
 
 <div class="card-grid" style="margin-top: 20px;">
-<div class="card fragment" style="border-color: var(--accent-red);">
+<div class="card card-danger fragment">
 <h4 class="accent-red">🚫 Bad Timing</h4>
 <ul>
 <li>Black Friday / peak traffic</li>
@@ -156,7 +156,7 @@ Don't migrate during peak traffic <!-- .element: class="subtitle" -->
 <li>Friday afternoon 😅</li>
 </ul>
 </div>
-<div class="card fragment" style="border-color: var(--accent-blue);">
+<div class="card card-success fragment">
 <h4 class="accent-green">✅ Good Timing</h4>
 <ul>
 <li>Maintenance window, low traffic</li>
@@ -252,11 +252,11 @@ Practical advice. These configs are not well-documented. Share your experience.
 ## Challenge: <span class="accent-red">Failover & Network Partitions</span>
 
 <div class="card-grid" style="margin-top: 20px;">
-<div class="card fragment" style="border-color: var(--accent-blue);">
+<div class="card card-success fragment">
 <h4 class="accent-green">✅ Happy path</h4>
 <p>Leader fails → new leader elected in 1–3 seconds. Data plane continues.</p>
 </div>
-<div class="card fragment" style="border-color: var(--accent-red);">
+<div class="card card-danger fragment">
 <h4 class="accent-red">⚠️ Network partition</h4>
 <p>Leader isolated → steps down. Majority side elects new leader. Minority side: metadata ops stall, but serve existing traffic.</p>
 </div>
