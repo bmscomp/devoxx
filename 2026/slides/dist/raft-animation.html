@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raft Consensus Animation</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0 6px;
+      align-items: center;
+    }
+
+    .controls button {
+      padding: 8px 22px;
+      border: 2px solid #1a73e8;
+      background: #fff;
+      color: #1a73e8;
+      font-weight: 700;
+      font-size: 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .controls button:hover {
+      background: #1a73e8;
+      color: #fff;
+    }
+
+    .controls button:disabled {
+      opacity: 0.3;
+      cursor: default;
+    }
+
+    .step-label {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1a73e8;
+      min-width: 80px;
+      text-align: center;
+    }
+
+    .stage {
+      flex: 1;
+      width: 100%;
+      position: relative;
+      max-width: 900px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .description {
+      padding: 8px 16px 12px;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 500;
+      min-height: 48px;
+      color: #222;
+      max-width: 850px;
+      line-height: 1.35;
+    }
+
+    .description strong {
+      color: #1a73e8;
+    }
+
+    .description .red {
+      color: #cc0000;
+      font-weight: 700;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="controls">
+    <button id="prevBtn" disabled>◄ Prev</button>
+    <span class="step-label" id="stepLabel">Step 0/13</span>
+    <button id="nextBtn">Next ►</button>
+  </div>
+  <div class="stage">
+    <canvas id="canvas"></canvas>
+  </div>
+  <div class="description" id="desc">
+    Click <strong>Next</strong> to start the Raft consensus animation
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const desc = document.getElementById('desc');
+    const stepLabel = document.getElementById('stepLabel');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    let step = 0;
+    const totalSteps = 13;
+
+    function resize() {
+      const stage = canvas.parentElement;
+      canvas.width = stage.clientWidth * 2;
+      canvas.height = stage.clientHeight * 2;
+      ctx.scale(2, 2);
+      draw();
+    }
+    window.addEventListener('resize', resize);
+
+    const W = () => canvas.width / 2;
+    const H = () => canvas.height / 2;
+    const nodes = () => {
+      const w = W(), h = H();
+      const cx = w / 2, cy = h / 2 + 10;
+      const r = Math.min(w, h) * 0.28;
+      return [
+        { x: cx, y: cy - r, id: 'Node 1', term: 0, role: 'follower', log: [] },
+        { x: cx + r * Math.sin(2 * Math.PI / 3), y: cy - r * Math.cos(2 * Math.PI / 3), id: 'Node 2', term: 0, role: 'follower', log: [] },
+        { x: cx - r * Math.sin(2 * Math.PI / 3), y: cy - r * Math.cos(2 * Math.PI / 3), id: 'Node 3', term: 0, role: 'follower', log: [] },
+      ];
+    };
+
+    let state = nodes();
+
+    const roleColors = {
+      follower: '#888',
+      candidate: '#1a73e8',
+      leader: '#1a73e8',
+    };
+
+    function drawNode(n, idx) {
+      const radius = 42;
+      ctx.save();
+
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, radius, 0, Math.PI * 2);
+      if (n.role === 'leader') {
+        ctx.fillStyle = '#1a73e8';
+        ctx.fill();
+        ctx.strokeStyle = '#0d5bbd';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      } else if (n.role === 'candidate') {
+        ctx.fillStyle = '#e8f0fe';
+        ctx.fill();
+        ctx.strokeStyle = '#1a73e8';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([6, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else if (n.role === 'dead') {
+        ctx.fillStyle = '#fee';
+        ctx.fill();
+        ctx.strokeStyle = '#cc0000';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.strokeStyle = '#cc0000';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(n.x - 18, n.y - 18);
+        ctx.lineTo(n.x + 18, n.y + 18);
+        ctx.moveTo(n.x + 18, n.y - 18);
+        ctx.lineTo(n.x - 18, n.y + 18);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = '#f5f5f5';
+        ctx.fill();
+        ctx.strokeStyle = '#ccc';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      if (n.role !== 'dead') {
+        ctx.fillStyle = n.role === 'leader' ? '#fff' : '#222';
+        ctx.font = 'bold 13px Inter, system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(n.id, n.x, n.y - 6);
+
+        ctx.font = '11px Inter, system-ui';
+        ctx.fillStyle = n.role === 'leader' ? 'rgba(255,255,255,0.85)' : roleColors[n.role];
+        ctx.fillText(n.role.toUpperCase(), n.x, n.y + 10);
+      }
+
+      if (n.status === 'slow') {
+        ctx.fillStyle = '#cc0000';
+        ctx.font = 'bold 11px Inter, system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚡ SLOW', n.x, n.y + 35);
+      }
+
+      if (n.term > 0) {
+        const tx = n.x + 30, ty = n.y - 34;
+        ctx.beginPath();
+        ctx.arc(tx, ty, 13, 0, Math.PI * 2);
+        ctx.fillStyle = n.role === 'dead' ? '#888' : '#1a73e8';
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 11px Inter, system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('T' + n.term, tx, ty);
+      }
+
+      if (n.log.length > 0) {
+        const logY = n.y + 56;
+        const logW = 24, logH = 16, gap = 4;
+        const startX = n.x - ((n.log.length * (logW + gap)) - gap) / 2;
+        n.log.forEach((entry, i) => {
+          ctx.fillStyle = entry.committed ? (n.role === 'dead' ? '#888' : '#1a73e8') : '#aaa';
+          ctx.fillRect(startX + i * (logW + gap), logY, logW, logH);
+          ctx.fillStyle = '#fff';
+          ctx.font = 'bold 10px Inter, system-ui';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(entry.val, startX + i * (logW + gap) + logW / 2, logY + logH / 2 + 1);
+        });
+        ctx.fillStyle = '#555';
+        ctx.font = 'bold 10px Inter, system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText('LOG', n.x, logY + logH + 12);
+      }
+
+      ctx.restore();
+    }
+
+    function drawArrow(from, to, label, color, dashed, progress) {
+      const radius = 48;
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const ux = dx / dist, uy = dy / dist;
+
+      const sx = from.x + ux * radius;
+      const sy = from.y + uy * radius;
+      const p = progress || 1;
+      const ex = from.x + ux * (radius + (dist - 2 * radius) * p);
+      const ey = from.y + uy * (radius + (dist - 2 * radius) * p);
+
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.5;
+      if (dashed) ctx.setLineDash([8, 5]);
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (p > 0) {
+        const headLen = 10;
+        const angle = Math.atan2(ey - sy, ex - sx);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(ex - headLen * Math.cos(angle - 0.4), ey - headLen * Math.sin(angle - 0.4));
+        ctx.lineTo(ex - headLen * Math.cos(angle + 0.4), ey - headLen * Math.sin(angle + 0.4));
+        ctx.fill();
+      }
+
+      if (label) {
+        const mx = (sx + ex) / 2;
+        const my = (sy + ey) / 2;
+        const perpX = -uy * 16;
+        const perpY = ux * 16;
+
+        ctx.font = 'bold 11px Inter, system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const m = ctx.measureText(label);
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.fillRect(mx + perpX - m.width / 2 - 4, my + perpY - 8, m.width + 8, 16);
+
+        ctx.fillStyle = color;
+        ctx.fillText(label, mx + perpX, my + perpY);
+      }
+      ctx.restore();
+    }
+
+    function drawClient(text, node) {
+      ctx.save();
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      const cx = node.x - 110, cy = node.y - 50;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(node.x - 48, node.y - 20);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#111';
+      ctx.font = 'bold 13px Inter, system-ui';
+      ctx.textAlign = 'right';
+      ctx.fillText('Client: ' + text, cx - 8, cy);
+      ctx.restore();
+    }
+
+    function drawBadge(text, color) {
+      const w = W(), h = H();
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.font = 'bold 15px Inter, system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText(text, w / 2, h - 30);
+      ctx.restore();
+    }
+
+    function drawLabel(x, y, text, color, align = 'center') {
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.font = 'bold 12px Inter, system-ui';
+      ctx.textAlign = align;
+      ctx.fillText(text, x, y);
+      ctx.restore();
+    }
+
+    function drawTimeout(node) {
+      const x = node.x - 55, y = node.y - 10;
+      ctx.save();
+      ctx.fillStyle = '#cc0000';
+      ctx.font = 'bold 12px Inter, system-ui';
+      ctx.textAlign = 'right';
+      ctx.fillText('⏱ timeout!', x, y);
+      ctx.restore();
+    }
+
+    function draw() {
+      const w = W(), h = H();
+      ctx.clearRect(0, 0, w, h);
+
+      state = nodes();
+
+      if (step === 1) {
+        drawTimeout(state[0]);
+      }
+      if (step === 2) {
+        state[0].role = 'candidate'; state[0].term = 1;
+        drawArrow(state[0], state[1], 'RequestVote', '#1a73e8', false);
+        drawArrow(state[0], state[2], 'RequestVote', '#1a73e8', false);
+      }
+      if (step === 3) {
+        state[0].role = 'candidate'; state[0].term = 1;
+        state[1].term = 1; state[2].term = 1;
+        drawArrow(state[1], state[0], 'Vote ✓', '#1a73e8', true);
+        drawArrow(state[2], state[0], 'Vote ✓', '#1a73e8', true);
+      }
+      if (step === 4) {
+        state[0].role = 'leader'; state[0].term = 1;
+        state[1].term = 1; state[2].term = 1;
+        drawArrow(state[0], state[1], 'AppendEntries ♥', '#1a73e8', false);
+        drawArrow(state[0], state[2], 'AppendEntries ♥', '#1a73e8', false);
+      }
+      if (step === 5) {
+        state[0].role = 'leader'; state[0].term = 1;
+        state[0].log = [{ val: 'x=1', committed: false }];
+        state[1].term = 1; state[2].term = 1;
+        drawArrow(state[0], state[1], 'Append [x=1]', '#1a73e8', false);
+        drawArrow(state[0], state[2], 'Append [x=1]', '#1a73e8', false);
+        drawClient('set x=1', state[0]);
+      }
+      if (step === 6) {
+        state[0].role = 'leader'; state[0].term = 1;
+        state[0].log = [{ val: 'x=1', committed: true }];
+        state[1].term = 1; state[1].log = [{ val: 'x=1', committed: true }];
+        state[2].term = 1; state[2].log = [{ val: 'x=1', committed: true }];
+        drawArrow(state[1], state[0], 'ACK ✓', '#1a73e8', true);
+        drawArrow(state[2], state[0], 'ACK ✓', '#1a73e8', true);
+        drawBadge('✓ COMMITTED (Majority Replicated)', '#1a73e8');
+      }
+      if (step === 7) {
+        state[0].role = 'leader'; state[0].term = 1;
+        state[0].log = [{ val: 'x=1', committed: true }, { val: 'y=2', committed: false }];
+        state[1].term = 1; state[1].log = [{ val: 'x=1', committed: true }];
+        state[2].term = 1; state[2].log = [{ val: 'x=1', committed: true }];
+        state[2].status = 'slow';
+        drawArrow(state[0], state[1], 'Append [y=2]', '#1a73e8', false);
+        drawArrow(state[0], state[2], 'Delayed', '#cc0000', true, 0.45);
+        drawClient('set y=2', state[0]);
+      }
+      if (step === 8) {
+        state[0].role = 'leader'; state[0].term = 1;
+        state[0].log = [{ val: 'x=1', committed: true }, { val: 'y=2', committed: true }];
+        state[1].term = 1; state[1].log = [{ val: 'x=1', committed: true }, { val: 'y=2', committed: true }];
+        state[2].term = 1; state[2].log = [{ val: 'x=1', committed: true }];
+        state[2].status = 'slow';
+        drawArrow(state[1], state[0], 'ACK ✓', '#1a73e8', true);
+        drawBadge('✓ COMMITTED (y=2)', '#1a73e8');
+        drawLabel(state[2].x - 60, state[2].y, 'Node 3 missed it!', '#cc0000', 'right');
+      }
+      if (step === 9) {
+        state[0].role = 'dead'; state[0].term = 1;
+        state[0].log = [{ val: 'x=1', committed: true }, { val: 'y=2', committed: true }];
+        state[1].term = 1; state[1].log = [{ val: 'x=1', committed: true }, { val: 'y=2', committed: true }];
+        state[2].term = 1; state[2].log = [{ val: 'x=1', committed: true }];
+        drawTimeout(state[1]);
+        drawBadge('Leader 1 Crashed!', '#cc0000');
+      }
+      if (step === 10) {
+        state[0].role = 'dead'; state[0].term = 1;
+        state[0].log = [{ val: 'x=1', committed: true }, { val: 'y=2', committed: true }];
+        state[1].role = 'candidate'; state[1].term = 2;
+        state[1].log = [{ val: 'x=1', committed: true }, { val: 'y=2', committed: true }];
+        state[2].term = 2; state[2].log = [{ val: 'x=1', committed: true }];
+        drawArrow(state[1], state[2], 'RequestVote(T2)', '#1a73e8', false);
+      }
+      if (step === 11) {
+        state[0].role = 'dead'; state[0].term = 1;
+        state[0].log = [{ val: 'x=1', committed: true }, { val: 'y=2', committed: true }];
+        state[1].role = 'candidate'; state[1].term = 2;
+        state[1].log = [{ val: 'x=1', committed: true }, { val: 'y=2', committed: true }];
+        state[2].term = 2; state[2].log = [{ val: 'x=1', committed: true }];
+        drawArrow(state[2], state[1], 'Vote ✓ (Newer Log)', '#1a73e8', true);
+      }
+      if (step === 12) {
+        state[0].role = 'dead'; state[0].term = 1;
+        state[0].log = [{ val: 'x=1', committed: true }, { val: 'y=2', committed: true }];
+        state[1].role = 'leader'; state[1].term = 2;
+        state[1].log = [{ val: 'x=1', committed: true }, { val: 'y=2', committed: true }];
+        state[2].term = 2; state[2].log = [{ val: 'x=1', committed: true }];
+        drawArrow(state[1], state[2], 'Append [y=2]', '#1a73e8', false);
+        drawBadge('Node 2 is Leader, Reconciling Node 3...', '#1a73e8');
+      }
+      if (step === 13) {
+        state[0].role = 'dead'; state[0].term = 1;
+        state[0].log = [{ val: 'x=1', committed: true }, { val: 'y=2', committed: true }];
+        state[1].role = 'leader'; state[1].term = 2;
+        state[1].log = [{ val: 'x=1', committed: true }, { val: 'y=2', committed: true }];
+        state[2].term = 2; state[2].log = [{ val: 'x=1', committed: true }, { val: 'y=2', committed: true }];
+        drawArrow(state[2], state[1], 'ACK ✓', '#1a73e8', true);
+        drawBadge('✓ LOG RECONCILED (Safely recovered)', '#1a73e8');
+      }
+
+      state.forEach((n, i) => drawNode(n, i));
+    }
+
+    const descriptions = [
+      'Click <strong>Next</strong> to start the Raft consensus animation. Initially, all nodes are <strong>Followers</strong>.',
+      '<strong>1. Election Timeout</strong> — Node 1 hasn\'t received a heartbeat. It starts an election.',
+      '<strong>2. Election</strong> — Node 1 becomes a <strong>Candidate</strong> (Term 1) and sends <strong>RequestVote</strong> RPCs to peers.',
+      '<strong>3. Votes Granted</strong> — Nodes 2 & 3 grant their <strong>vote</strong>. Node 1 gets a <strong>majority</strong> (3/3).',
+      '<strong>4. Leader Active</strong> — Node 1 is now the <strong>Leader</strong>. It sends <strong>AppendEntries</strong> (heartbeats) to maintain authority.',
+      '<strong>5. Client Request</strong> — A client writes <strong>x=1</strong>. Leader appends to its log and replicates via <strong>AppendEntries</strong>.',
+      '<strong>6. Commitment</strong> — Followers <strong>ACK</strong>. Majority reached → entry is <strong>committed</strong>. Log is consistent.',
+      '<strong>7. <span class="red">Slow Node Scenario</span></strong> — Client writes <strong>y=2</strong>. Node 3 experiences a <strong>network delay</strong> and misses the request.',
+      '<strong>8. Partial Commit</strong> — Node 2 ACKs. The Leader commits <strong>y=2</strong> because 2 out of 3 is still a <strong>majority</strong>! Node 3 is now out-of-sync.',
+      '<strong>9. Disaster!</strong> — Leader Node 1 crashes before Node 3 can catch up. Node 2 times out.',
+      '<strong>10. New Election</strong> — Node 2 becomes <strong>Candidate</strong> (Term 2) and asks Node 3 for a vote.',
+      '<strong>11. Safety Check</strong> — Node 3 <strong>grants the vote</strong> because Node 2\'s log is more up-to-date. Raft guarantees a leader has all committed entries!',
+      '<strong>12. Log Reconciliation</strong> — Node 2 is the new <strong>Leader</strong>. It senses Node 3 is missing <strong>y=2</strong> and sends an <strong>AppendEntries</strong> to reconcile.',
+      '<strong>13. Recovery Complete</strong> — Node 3 appends the missing entry. Logs are <strong>reconciled</strong> and no committed data was ever lost!'
+    ];
+
+    function updateUI() {
+      stepLabel.textContent = `Step ${step}/${totalSteps}`;
+      prevBtn.disabled = step === 0;
+      nextBtn.disabled = step === totalSteps;
+      desc.innerHTML = descriptions[step];
+      draw();
+    }
+
+    nextBtn.addEventListener('click', () => {
+      if (step < totalSteps) { step++; updateUI(); }
+    });
+    prevBtn.addEventListener('click', () => {
+      if (step > 0) { step--; updateUI(); }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') { nextBtn.click(); e.preventDefault(); }
+      if (e.key === 'ArrowLeft') { prevBtn.click(); e.preventDefault(); }
+    });
+
+    resize();
+    updateUI();
+  </script>
+</body>
+
+</html>

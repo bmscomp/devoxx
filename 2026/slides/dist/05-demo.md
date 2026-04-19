@@ -73,11 +73,11 @@ This is the "aha" moment. The audience sees that metadata is just another Kafka 
 
 Adversarial — push the system to its limits <!-- .element: class="subtitle" -->
 
-- <!-- .element: class="fragment" --> <strong>Scenario 1:</strong> Kill active controller
+- <!-- .element: class="fragment" --> **Scenario 1:** Kill active controller
   - Watch Raft election in real time (logs + quorum status)
   - New leader elected in <strong><span class="accent-green">seconds</span></strong>
   - Produce/consume during failover → no data loss
-- <!-- .element: class="fragment" --> <strong>Scenario 2:</strong> Kill ZK majority (pre-migration)
+- <!-- .element: class="fragment" --> **Scenario 2:** Kill ZK majority (pre-migration)
   - Entire cluster freezes — no new topics, no producer acks
   - <strong>Contrast</strong>: KRaft handles this gracefully
 
@@ -98,7 +98,7 @@ This is the crowd-pleaser. Killing the leader and watching instant recovery is d
 
 Stress-testing the cluster <!-- .element: class="subtitle" -->
 
-- <!-- .element: class="fragment" --> Scale a topic to <strong>10,000 partitions</strong> incrementally
+- <!-- .element: class="fragment" --> Scale a topic to **10,000 partitions** incrementally
   - Watch partition creation in real time
   - Monitor broker resource usage
 - <!-- .element: class="fragment" --> Kill a broker during scaling

@@ -343,9 +343,8 @@ Note:
 
 <!-- .slide: class="center-slide" data-background-color="#0f172a" -->
 
-<div style="color: #fbbf24; font-size: 1.2em; font-weight: 400; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; justify-content: center; gap: 15px;">
-<img src="img/kafka-logo.png" alt="Kafka" style="height: 50px; filter: brightness(0) invert(1);">
-<span>4.0</span>
+<div style="color: #fbbf24; font-size: 1.2em; font-weight: 400; text-transform: uppercase; letter-spacing: 0.1em;">
+Kafka 4.0
 </div>
 
 <div style="color: #f87171; font-size: 4.5em; font-weight: 900; line-height: 1; margin: 20px 0; letter-spacing: -0.03em;">
