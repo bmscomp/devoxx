@@ -25,9 +25,7 @@ Welcome everyone. This is a 2-hour deep dive into how Kafka manages its own meta
 - <!-- .element: class="fragment" --> They <strong>coordinate</strong> to appear as a single coherent system to the outside world
 - <!-- .element: class="fragment" --> Each node has its own <strong>local state</strong> — no shared memory, no shared clock
 
-<!-- .element: class="fragment" -->
-
-<div class="card-grid three-col" style="margin-top: 15px;">
+<div class="card-grid three-col fragment" style="margin-top: 15px;">
 <div class="card">
 <h4>Network</h4>
 <p>The only way nodes can communicate — and it can fail</p>
@@ -57,9 +55,7 @@ Start with the basics. Make sure everyone has the same mental model before divin
 - <!-- .element: class="fragment" --> <strong>Ordering</strong> — events happen concurrently, but we need a total order
 - <!-- .element: class="fragment" --> <strong>Consistency vs. Availability</strong> — the CAP theorem forces a trade-off
 
-<!-- .element: class="fragment" -->
-
-<div class="quote-block">
+<div class="quote-block fragment">
 "A distributed system is one in which the failure of a computer you didn't even know existed can render your own computer unusable."
 <span class="author">— Leslie Lamport</span>
 </div>
@@ -81,9 +77,7 @@ Set the stage. The audience needs to feel the weight of these challenges before 
 - <!-- .element: class="fragment" --> Partitions are <strong>replicated</strong> across brokers for fault tolerance
 - <!-- .element: class="fragment" --> One replica is the <strong><span class="accent-orange">Leader</span></strong>, others are <strong>Followers</strong> (ISR)
 
-<!-- .element: class="fragment" -->
-
-<div class="card-grid three-col" style="margin-top: 10px;">
+<div class="card-grid three-col fragment" style="margin-top: 10px;">
 <div class="card">
 <h4>No shared clock</h4>
 <p>Each broker has its own notion of time</p>

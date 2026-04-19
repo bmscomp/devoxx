@@ -40,9 +40,7 @@ Set the theoretical foundation. FLP is important because it explains why every c
 - <!-- .element: class="fragment" --> <span class="accent-red">Rejected by reviewers for nearly a decade</span> — too unconventional
 - <!-- .element: class="fragment" --> Lamport's response: write <em>"Paxos Made Simple"</em> (2001)
 
-<!-- .element: class="fragment" -->
-
-<div class="quote-block">
+<div class="quote-block fragment">
 "Paxos Made Simple: the title was a joke."
 <span class="author">— Leslie Lamport</span>
 </div>
@@ -136,9 +134,7 @@ Jay Kreps, Neha Narkhede, and Jun Rao needed coordination for Kafka. <!-- .eleme
 
 ZooKeeper uses <strong><span class="accent-yellow">ZAB</span></strong> (ZooKeeper Atomic Broadcast) — Paxos-inspired, but with a <strong>stable leader</strong> and <strong>total ordering</strong>. <!-- .element: style="font-size: 0.8em;" -->
 
-<!-- .element: class="fragment" -->
-
-<div class="quote-block" style="border-color: var(--accent-black);">
+<div class="quote-block fragment" style="border-color: var(--accent-black);">
 The pragmatic choice: don't reinvent consensus — delegate it to people who already suffered through Paxos.
 </div>
 
@@ -166,9 +162,7 @@ Yahoo! Research, 2007 — Apache, 2008 <!-- .element: class="subtitle" -->
 
 A centralized coordination service for distributed applications. <!-- .element: style="font-size: 0.78em; color: #333;" -->
 
-<!-- .element: class="fragment" -->
-
-<div class="card-grid three-col">
+<div class="card-grid three-col fragment">
 <div class="card">
 <h4>Znodes</h4>
 <p>Hierarchical key-value store, like a filesystem</p>
@@ -183,9 +177,7 @@ A centralized coordination service for distributed applications. <!-- .element: 
 </div>
 </div>
 
-<!-- .element: class="fragment" -->
-
-<div class="card-grid">
+<div class="card-grid fragment">
 <div class="card">
 <h4>Sequential Nodes</h4>
 <p>Auto-incrementing names for ordering</p>
@@ -233,9 +225,7 @@ Walk through the ZK tree. Highlight the ephemeral nodes — they're the key to f
   - Topic creation → admin request written to `/admin`
   - ISR changes → brokers write to `/isr_change_notification`
 
-<!-- .element: class="fragment" -->
-
-<div class="highlight-box" style="margin-top: 20px;">
+<div class="highlight-box fragment" style="margin-top: 20px;">
 <p style="font-size: 0.75em; margin: 0; text-align: center;">
 <strong>ZK</strong> ← <span class="accent-orange">Controller</span> → <strong>Brokers</strong> ← <strong>ZK</strong>
 </p>

@@ -46,7 +46,7 @@ These links are in the repo README too. The audience can find everything there.
 
 <span style="color: #5b9cf5;">@bmscomp</span>
 
-github.com/bmscomp/devoxx/2026
+<a href="https://github.com/bmscomp/devoxx/2026" style="color: #5b9cf5; text-decoration: none;">github.com/bmscomp/devoxx/2026</a>
 
 </div>
 
