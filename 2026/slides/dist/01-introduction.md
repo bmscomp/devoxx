@@ -19,6 +19,37 @@ Welcome everyone. This is a 2-hour deep dive into how Kafka manages its own meta
 
 ---
 
+<!-- .slide: class="center-slide" data-background-color="#0b1929" -->
+
+<div style="display: flex; align-items: center; justify-content: center; gap: 60px; margin-top: 10px;">
+
+<div style="text-align: left;">
+  <div style="font-size: 2em; font-weight: 900; color: #ffffff; line-height: 1.1;">Said<br><span style="color: #5b9cf5;">BOUDJELDA</span></div>
+  <div style="margin-top: 16px; font-size: 0.72em; color: #94a3b8; line-height: 2.0;">
+    <div>🏢 &nbsp;<strong style="color: #e2e8f0;">Software Engineer</strong></div>
+    <div>🌍 &nbsp;<span style="color: #e2e8f0;">South of France</span></div>
+    <div>🐦 &nbsp;<span style="color: #5b9cf5;">@bmscomp</span></div>
+    <div>🐙 &nbsp;<span style="color: #5b9cf5;">github.com/bmscomp</span></div>
+  </div>
+</div>
+
+<div style="text-align: left;">
+  <div style="font-size: 0.62em; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;">Areas of expertise</div>
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+    <div style="background: rgba(91,156,245,0.12); border-left: 3px solid #5b9cf5; padding: 8px 16px; border-radius: 0 8px 8px 0; font-size: 0.7em; color: #e2e8f0;">⚡ Apache Kafka &amp; Distributed Systems</div>
+    <div style="background: rgba(74,222,128,0.10); border-left: 3px solid #4ade80; padding: 8px 16px; border-radius: 0 8px 8px 0; font-size: 0.7em; color: #e2e8f0;">☸️  Big fan of functional programming &amp; Scala, Haskell, Agda, Idris</div>
+    <div style="background: rgba(251,191,36,0.10); border-left: 3px solid #fbbf24; padding: 8px 16px; border-radius: 0 8px 8px 0; font-size: 0.7em; color: #e2e8f0;">🏗️  Platform Engineering</div>
+    <div style="background: rgba(192,132,252,0.10); border-left: 3px solid #c084fc; padding: 8px 16px; border-radius: 0 8px 8px 0; font-size: 0.7em; color: #e2e8f0;">🔬 Open Source Contributor</div>
+  </div>
+</div>
+
+</div>
+
+Note:
+Quick self-introduction — 30 seconds max. Let the slide speak for itself.
+
+---
+
 ## What is a <span class="accent-blue">Distributed System</span>?
 
 - <!-- .element: class="fragment" --> A collection of <strong>independent nodes</strong> that communicate over a network

@@ -34,7 +34,7 @@ define tui_cmd
 	@echo "$(CYAN)╰──────────────────────────────────────────────────────────────────────────$(NC)"
 endef
 
-.PHONY: help download download-v4 setup-dirs start cluster-id check-version list-topics produce-messages consume-messages controllers bridge kraft verify-bridge verify-zookeeper verify-controllers verify-kraft upgrade zk-failover controller-failover metadata-shell quorum-status scale-partitions restart-brokers check-pid status watch kill clean all
+.PHONY: help download download-v4 setup-dirs start cluster-id check-version list-topics produce-messages consume-messages controllers bridge kraft verify-bridge verify-zookeeper verify-controllers verify-kraft upgrade zk-failover controller-failover metadata-shell quorum-status scale-partitions restart-brokers check-controllers-metadata check-pid status watch kill clean all
 
 help:
 	@echo "$(CYAN)Kafka Binary Migration Demo Targets$(NC)"
@@ -62,9 +62,10 @@ help:
 	@echo ""
 	@echo "$(CYAN)KRaft Demo Targets$(NC)"
 	@echo "-----------------------------------"
-	@echo "$(YELLOW)metadata-shell$(NC)       - Browse the __cluster_metadata log interactively"
-	@echo "$(YELLOW)quorum-status$(NC)        - Show KRaft replication status with lag details"
-	@echo "$(YELLOW)scale-partitions$(NC)     - Create a 10,000-partition topic instantly (KRaft power)"
+	@echo "$(YELLOW)metadata-shell$(NC)            - Browse the __cluster_metadata log interactively"
+	@echo "$(YELLOW)quorum-status$(NC)             - Show KRaft replication status with lag details"
+	@echo "$(YELLOW)scale-partitions$(NC)          - Create a 10,000-partition topic instantly (KRaft power)"
+	@echo "$(YELLOW)check-controllers-metadata$(NC) - Inspect __cluster_metadata records on all controllers"
 	@echo ""
 	@echo "$(CYAN)Utilities$(NC)"
 	@echo "-----------------------------------"
@@ -456,6 +457,46 @@ metadata-shell:
 		echo "$(RED)! No __cluster_metadata log found. Start controllers first.$(NC)"; exit 1; \
 	fi; \
 	$(KAFKA_BIN)/kafka-dump-log.sh --cluster-metadata-decoder --files $$LATEST_LOG 2>/dev/null | tail -80
+
+# ── Controller Metadata Inspection ───────────────────────────
+
+check-controllers-metadata:
+	@echo "\n$(CYAN)━━━ KRaft Controller Metadata Inspection ━━━$(NC)"
+	@echo ""
+	$(call tui_cmd,Quorum Leadership Status,kafka-metadata-quorum.sh describe --status)
+	@$(KAFKA_BIN)/kafka-metadata-quorum.sh --bootstrap-server localhost:9092,localhost:9096,localhost:9097 describe --status 2>/dev/null \
+		|| echo "$(RED)  ! Quorum unreachable — brokers may still be in ZooKeeper mode.$(NC)"
+	@echo ""
+	$(call tui_cmd,Scanning __cluster_metadata segment size on each controller,kafka-dump-log.sh --cluster-metadata-decoder)
+	@for CTRL in 1 2 3; do \
+		LOG_DIR="$(DATA_DIR)/controller$$CTRL/__cluster_metadata-0"; \
+		if [ ! -d "$$LOG_DIR" ]; then \
+			printf "$(CYAN)│$(NC) Controller $$CTRL   $(RED)%-8s$(NC) — no metadata log dir found\n" "ABSENT"; \
+			continue; \
+		fi; \
+		LATEST_LOG=$$(ls -t $$LOG_DIR/*.log 2>/dev/null | head -1); \
+		if [ -z "$$LATEST_LOG" ]; then \
+			printf "$(CYAN)│$(NC) Controller $$CTRL   $(RED)%-8s$(NC) — no .log file\n" "EMPTY"; \
+			continue; \
+		fi; \
+		RECORD_COUNT=$$($(KAFKA_BIN)/kafka-dump-log.sh --cluster-metadata-decoder --files $$LATEST_LOG 2>/dev/null | grep -c '^baseOffset:' || echo 0); \
+		SEG_SIZE=$$(du -sh $$LATEST_LOG 2>/dev/null | cut -f1); \
+		printf "$(CYAN)│$(NC) Controller $$CTRL   $(GREEN)%-8s$(NC)   records=%-6s  segment=%-8s  file=%s\n" \
+			"OK" "$$RECORD_COUNT" "$$SEG_SIZE" "$$(basename $$LATEST_LOG)"; \
+	done
+	@echo ""
+	$(call tui_cmd,Decoded metadata records from active quorum leader (controller1 — last 20),kafka-dump-log.sh --cluster-metadata-decoder)
+	@LATEST_LOG=$$(ls -t $(DATA_DIR)/controller1/__cluster_metadata-0/*.log 2>/dev/null | head -1); \
+	if [ -z "$$LATEST_LOG" ]; then \
+		echo "$(RED)  ! No metadata log on controller1. Run 'make controllers' first.$(NC)"; exit 1; \
+	fi; \
+	echo "$(YELLOW)  File: $$LATEST_LOG$(NC)"; \
+	echo ""; \
+	$(KAFKA_BIN)/kafka-dump-log.sh --cluster-metadata-decoder --files $$LATEST_LOG 2>/dev/null \
+		| grep -E '^(baseOffset:|payload:|  type:|  name:|  brokerId:|  leaderId:|  partitionId:|  replicas:)' \
+		| tail -60 \
+		|| $(KAFKA_BIN)/kafka-dump-log.sh --cluster-metadata-decoder --files $$LATEST_LOG 2>/dev/null | tail -40
+	@echo ""
 
 quorum-status:
 	@echo "\n$(CYAN)━━━ KRaft Demo: Raft Quorum Replication Status ━━━$(NC)"

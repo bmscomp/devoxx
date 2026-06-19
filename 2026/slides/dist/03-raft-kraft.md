@@ -56,27 +56,44 @@ Draw the contrast with Paxos explicitly. The random timeout is elegant — it so
 
 The heart of Raft — and the heart of KRaft <!-- .element: class="subtitle" -->
 
-<div class="diagram-box" style="font-size: 0.6em;">
-┌───────┬───────┬──────────────────┐
-│ Index │ Term  │     Command      │
-├───────┼───────┼──────────────────┤
-│   1   │   1   │ SET x = 5        │
-│   2   │   1   │ SET y = 10       │
-│   3   │   2   │ SET x = 7        │  ← <span class="accent-green">committed</span> (majority)
-│   4   │   3   │ DELETE z         │  ← <span class="accent-yellow">replicated, not yet committed</span>
-└───────┴───────┴──────────────────┘
+<div class="split-layout" style="margin-top: 18px; gap: 36px; align-items: flex-start;">
+<div class="split-left">
+
+<div class="diagram-box" style="font-size: 0.65em; line-height: 2.0;">
+ Index │ Term │  Command
+───────┼──────┼─────────────────
+  1    │  1   │  <span class="accent-green">register broker 1</span>
+  2    │  1   │  <span class="accent-green">create topic "orders"</span>
+  3    │  2   │  <span class="accent-green">add partition 0</span>    ← <strong>committed ✓</strong>
+  4    │  3   │  <span class="accent-yellow">add partition 1</span>    ← <em>pending…</em>
 </div>
 
-1. <!-- .element: class="fragment" --> Client sends command to <strong><span class="accent-green">Leader</span></strong>
-2. <!-- .element: class="fragment" --> Leader appends to its local log
-3. <!-- .element: class="fragment" --> Leader sends `AppendEntries(term, prevLogIndex, prevLogTerm, entries[], commitIndex)` to followers
-4. <!-- .element: class="fragment" --> Follower checks: does my log match at `prevLogIndex/prevLogTerm`?
-   - <span class="accent-green">Yes</span> → append, respond success
-   - <span class="accent-red">No</span> → reject → leader decrements `nextIndex`, retries
-5. <!-- .element: class="fragment" --> Majority replicated → leader advances `commitIndex`
+<div class="highlight-box" style="margin-top: 12px; font-size: 0.72em; padding: 12px 16px;">
+✅ <strong>Committed</strong> = written on a <strong>majority</strong> → survives any crash<br>
+⏳ <strong>Pending</strong> = not yet majority → <span class="accent-yellow">may be rolled back</span>
+</div>
+
+</div>
+<div class="split-right">
+
+<div class="card fragment" style="border-top: 3px solid var(--accent-green); margin-bottom: 10px;">
+<h4 class="accent-green">① Append</h4>
+<p>Client → <strong>Leader</strong>. Leader writes to its own log first.</p>
+</div>
+<div class="card fragment" style="border-top: 3px solid var(--accent-blue); margin-bottom: 10px;">
+<h4 class="accent-blue">② Replicate</h4>
+<p>Leader sends <code>AppendEntries</code> to all followers in parallel.</p>
+</div>
+<div class="card fragment" style="border-top: 3px solid var(--accent-cyan);">
+<h4 class="accent-cyan">③ Commit</h4>
+<p><strong>Majority ACK</strong> → leader advances <code>commitIndex</code> → reply to client ✅</p>
+</div>
+
+</div>
+</div>
 
 Note:
-Go slow here. The log structure is EXACTLY what KRaft uses for __cluster_metadata. They need to internalize this.
+Go slow here. Use Kafka metadata as the example instead of generic SET commands — the audience connects it to KRaft immediately. Entry 3 is committed — survives any crash. Entry 4 is pending — can vanish if the leader dies now.
 
 ---
 
@@ -343,8 +360,9 @@ Note:
 
 <!-- .slide: class="center-slide" data-background-color="#0f172a" -->
 
-<div style="color: #fbbf24; font-size: 1.2em; font-weight: 400; text-transform: uppercase; letter-spacing: 0.1em;">
-Kafka 4.0
+<div style="color: #fbbf24; font-size: 1.2em; font-weight: 400; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; justify-content: center; gap: 15px;">
+<img src="img/kafka-logo.png" alt="Kafka" style="height: 50px; filter: brightness(0) invert(1);">
+<span>4.0</span>
 </div>
 
 <div style="color: #f87171; font-size: 4.5em; font-weight: 900; line-height: 1; margin: 20px 0; letter-spacing: -0.03em;">

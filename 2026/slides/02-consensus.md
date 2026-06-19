@@ -88,21 +88,9 @@ The Paxos story is entertaining. Lamport wrote it as a story about Greek legisla
 </ol>
 </div>
 
-Did you follow all of that? <!-- .element: class="fragment" data-fragment-index="6" style="font-size: 1.3em; font-weight: 700; text-align: center; margin: 30px 0;" -->
-
-Neither did the reviewers. <strong><span class="accent-blue">For ten years.</span></strong> <!-- .element: class="fragment" data-fragment-index="7" style="font-size: 1.1em; text-align: center; color: #555;" -->
-
-<div class="fragment" data-fragment-index="8" style="font-size: 0.72em; color: #444;">
-<ul>
-<li>And this agrees on <strong>a single value</strong> — real systems need a <strong>sequence</strong></li>
-<li>Multi-Paxos extends it, but Lamport left it <strong><span class="accent-red">underspecified</span></strong></li>
-<li>No leader election, no log gaps, no membership changes</li>
-<li>Every implementation is different: Google Chubby ≠ Spanner ≠ Amazon</li>
-</ul>
-</div>
 
 Note:
-DELIVER THIS FAST. The audience should feel overwhelmed. Pause after "Did you follow?" — let the silence land. They laugh because they relate.
+DELIVER THE PHASES FAST. The audience should feel overwhelmed on purpose — that's the whole point of this slide. Pause after the last phase and let the silence land before moving on.
 
 ---
 

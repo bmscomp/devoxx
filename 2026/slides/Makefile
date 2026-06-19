@@ -33,7 +33,7 @@ BOLD     := \033[1m
 #  TARGETS
 # ─────────────────────────────────────────────────────────────
 
-.PHONY: help serve open build clean check watch
+.PHONY: help serve open build clean check watch pdf
 
 ## help : Show this help message
 help:
@@ -51,6 +51,7 @@ help:
 	@printf "\n"
 	@printf "$(BOLD)Production:$(RESET)\n"
 	@printf "  $(GREEN)build$(RESET)    Build self-contained dist/ for deployment\n"
+	@printf "  $(GREEN)pdf$(RESET)      Generate PDF from slides (requires npx)\n"
 	@printf "  $(GREEN)check$(RESET)    Validate all source files exist\n"
 	@printf "  $(GREEN)clean$(RESET)    Remove dist/ directory\n"
 	@printf "\n"
@@ -145,6 +146,22 @@ build: check
 	printf "  📁 $(DIST)/  ·  $$TOTAL files  ·  $$SIZE\n\n"
 	@printf "  $(BOLD)To serve:$(RESET)  cd $(DIST) && python3 -m http.server 8080\n"
 	@printf "  $(BOLD)To deploy:$(RESET) upload $(DIST)/ to any static host\n\n"
+
+## pdf : Generate PDF from slides using docker decktape
+pdf: check
+	@printf "$(BOLD)$(CYAN)▶ Generating PDF...$(RESET)\n"
+	@command -v docker >/dev/null 2>&1 || { \
+		printf "$(RED)✗ docker not found. Please install Docker.$(RESET)\n"; \
+		exit 1; \
+	}
+	@printf "  $(YELLOW)Starting temporary server on port $(PORT)...$(RESET)\n"
+	@$(PYTHON) -m http.server $(PORT) > /dev/null 2>&1 & \
+	SERVER_PID=$$!; \
+	sleep 2; \
+	printf "  $(YELLOW)Running decktape via docker...$(RESET)\n"; \
+	docker run --rm -v "$$(pwd):/slides" astefanutti/decktape http://host.docker.internal:$(PORT) slides.pdf; \
+	kill $$SERVER_PID 2>/dev/null
+	@printf "\n  $(BOLD)$(GREEN)✓ PDF generated: slides.pdf$(RESET)\n\n"
 
 ## check : Validate all required source files exist
 check:

@@ -19,6 +19,65 @@ Welcome everyone. This is a 2-hour deep dive into how Kafka manages its own meta
 
 ---
 
+<!-- .slide: class="center-slide" data-background-color="#0b1929" -->
+
+<div style="display: flex; align-items: center; justify-content: center; gap: 60px; margin-top: 10px;">
+
+<div style="text-align: left;">
+  <div style="font-size: 2em; font-weight: 900; color: #ffffff; line-height: 1.1;">Said<br><span style="color: #5b9cf5;">BOUDJELDA</span></div>
+  <div style="margin-top: 16px; font-size: 0.72em; color: #94a3b8; line-height: 2.0;">
+    <div>🏢 &nbsp;<strong style="color: #e2e8f0;">Software/Beckend Engineer @SCIAM</strong></div>
+    <div>🐙 &nbsp;<span style="color: #5b9cf5;">github.com/bmscomp</span></div>
+  </div>
+</div>
+
+<div style="text-align: left;">
+  <div style="font-size: 0.62em; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;">What I love</div>
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+    <div style="background: rgba(91,156,245,0.12); border-left: 3px solid #5b9cf5; padding: 8px 16px; border-radius: 0 8px 8px 0; font-size: 0.7em; color: #e2e8f0;">⚡ Apache Kafka &amp; Distributed Systems</div>
+    <div style="background: rgba(74,222,128,0.10); border-left: 3px solid #4ade80; padding: 8px 16px; border-radius: 0 8px 8px 0; font-size: 0.7em; color: #e2e8f0;">λ &nbsp;Big fan of functional programming &amp; Teaching Scala and Learning Haskell, Agda, Idris</div>
+    <div style="background: rgba(251,191,36,0.10); border-left: 3px solid #fbbf24; padding: 8px 16px; border-radius: 0 8px 8px 0; font-size: 0.7em; color: #e2e8f0;">🏗️  Platform Engineering</div>
+    <div style="background: rgba(192,132,252,0.10); border-left: 3px solid #c084fc; padding: 8px 16px; border-radius: 0 8px 8px 0; font-size: 0.7em; color: #e2e8f0;">🔬 Open Source Contributor (I  think I can say that)</div>
+  </div>
+</div>
+
+</div>
+
+Note:
+Quick self-introduction — 30 seconds max. Let the slide speak for itself.
+
+---
+
+<!-- .slide: class="center-slide" data-background-color="#0b1929" -->
+
+<div style="font-size: 1.8em; margin-bottom: 6px;">📋</div>
+
+## <span style="color: #e2e8f0;">Before We Start</span>
+
+<div style="max-width: 800px; margin: 12px auto 0; display: flex; flex-direction: column; gap: 10px; text-align: left;">
+
+<div class="fragment" style="display: flex; align-items: center; gap: 14px; background: rgba(37,99,235,0.10); border-left: 3px solid #5b9cf5; border-radius: 0 8px 8px 0; padding: 10px 16px;">
+  <span style="font-size: 1.2em; flex-shrink: 0;">📚</span>
+  <span style="color: #e2e8f0; font-size: 0.68em; line-height: 1.45;"><strong style="color: #5b9cf5;">This is not a Kafka course.</strong> But if you're new to Kafka — don't worry. We'll cover the distributed systems foundations you need, and you'll still walk away having learned something valuable.</span>
+</div>
+
+<div class="fragment" style="display: flex; align-items: center; gap: 14px; background: rgba(234,88,12,0.10); border-left: 3px solid #fb923c; border-radius: 0 8px 8px 0; padding: 10px 16px;">
+  <span style="font-size: 1.2em; flex-shrink: 0;">⏱️</span>
+  <span style="color: #e2e8f0; font-size: 0.68em; line-height: 1.45;"><strong style="color: #fb923c;">I am not a master of time.</strong> We have 2 hours and a lot of ground to cover. I'll do my best — but if we run long somewhere, or even less, it's because the topic deserves it.</span>
+</div>
+
+<div class="fragment" style="display: flex; align-items: center; gap: 14px; background: rgba(74,222,128,0.08); border-left: 3px solid #4ade80; border-radius: 0 8px 8px 0; padding: 10px 16px;">
+  <span style="font-size: 1.2em; flex-shrink: 0;">🔄</span>
+  <span style="color: #e2e8f0; font-size: 0.68em; line-height: 1.45;"><strong style="color: #4ade80;">Live demos may fail — and that's fine.</strong> Distributed systems are complex. If something breaks during the demo, we start over. That's actually part of the show.</span>
+</div>
+
+</div>
+
+Note:
+Keep this light and fun. The audience relaxes when they know the rules upfront. The "demos may fail" point usually gets a laugh — own it.
+
+---
+
 ## What is a <span class="accent-blue">Distributed System</span>?
 
 - <!-- .element: class="fragment" --> A collection of <strong>independent nodes</strong> that communicate over a network

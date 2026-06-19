@@ -48,6 +48,9 @@ Set the theoretical foundation. FLP is important because it explains why every c
 
 1989 / Leslie Lamport <!-- .element: class="subtitle" -->
 
+<div style="display: flex; gap: 30px; align-items: flex-start;">
+<div style="flex: 1;">
+
 - <!-- .element: class="fragment" --> Invented by <strong>Leslie Lamport</strong> — also created LaTeX & defined distributed systems
 - <!-- .element: class="fragment" --> First described in <em>"The Part-Time Parliament"</em> (1989) — set on a fictional <strong>Greek island</strong> where legislators came and went
 - <!-- .element: class="fragment" --> <span class="accent-red">Rejected by reviewers for nearly a decade</span> — too unconventional
@@ -56,6 +59,13 @@ Set the theoretical foundation. FLP is important because it explains why every c
 <div class="quote-block fragment">
 "Paxos Made Simple: the title was a joke."
 <span class="author">— Leslie Lamport</span>
+</div>
+
+</div>
+<div style="flex: 0 0 220px; text-align: center;">
+<img src="img/leslie-lamport.jpg" alt="Leslie Lamport" style="width: 220px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+<div style="font-size: 0.5em; color: #64748b; margin-top: 8px;">Leslie Lamport<br>Turing Award 2013</div>
+</div>
 </div>
 
 The most influential consensus algorithm in history — <strong><span class="accent-purple">and the hardest to understand.</span></strong> <!-- .element: class="fragment" style="font-size: 0.8em; margin-top: 15px;" -->
@@ -330,7 +340,7 @@ Let this slide breathe. No click-through. Just stare at it. The contrast is the 
 
 <div class="progress-line fragment"><span class="year">2015</span> Kafka 0.9: consumer groups <strong>moved out of ZK</strong> → <code>__consumer_offsets</code></div>
 <div class="progress-line fragment"><span class="year">2017+</span> Kafka 2.x: admin operations stop requiring direct ZK access</div>
-<div class="progress-line fragment" style="border: 1px solid var(--accent-blue);"><span class="year" style="color: var(--accent-blue);">2019</span> <strong>KIP-500</strong> — Colin McCabe proposes removing ZooKeeper entirely</div>
+<div class="progress-line fragment" style="border: 1px solid var(--accent-blue);"><span class="year">2019</span> <strong>KIP-500</strong> — Colin McCabe proposes removing ZooKeeper entirely</div>
 
 <div class="quote-block" style="margin-top: 25px; border-color: var(--accent-blue);">
 "We should manage metadata the same way we manage data: with Apache Kafka itself."
